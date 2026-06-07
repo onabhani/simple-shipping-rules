@@ -528,8 +528,10 @@ final class Lawhaa_Shipping_Rules {
                 );
             }
 
-            $mrsool_allowed = self::matches_alias_group( 'mrsool', $city, $district ) || self::matches_alias_group( 'fast_local', $city, $district );
-            $c4d_allowed    = self::matches_alias_group( 'c4d', $city, $district ) || self::matches_alias_group( 'fast_local', $city, $district );
+            $fast_groups    = isset( $config['fast_groups'] ) ? (array) $config['fast_groups'] : array();
+            $fast_group_ok  = in_array( $group, $fast_groups, true );
+            $mrsool_allowed = $fast_group_ok && ( self::matches_alias_group( 'mrsool', $city, $district ) || self::matches_alias_group( 'fast_local', $city, $district ) );
+            $c4d_allowed    = $fast_group_ok && ( self::matches_alias_group( 'c4d', $city, $district ) || self::matches_alias_group( 'fast_local', $city, $district ) );
             if ( 'yes' === $config['mrsool_enabled'] && $mrsool_allowed && $weight_kg <= (float) $config['mrsool_max_kg'] ) {
                 $estimate = $config['mrsool_delivery_estimate'];
                 $rates[]  = array(
@@ -562,7 +564,9 @@ final class Lawhaa_Shipping_Rules {
                 );
             }
 
-            if ( 'yes' === $config['pickup_enabled'] && self::matches_alias_group( 'pickup', $city, $district ) ) {
+            $pickup_groups   = isset( $config['pickup_groups'] ) ? (array) $config['pickup_groups'] : array();
+            $pickup_group_ok = in_array( $group, $pickup_groups, true );
+            if ( 'yes' === $config['pickup_enabled'] && $pickup_group_ok && self::matches_alias_group( 'pickup', $city, $district ) ) {
                 $label = self::setting_label( $config, 'pickup_label', __( 'Pickup from center', 'lawhaa-shipping-rules' ) );
                 $rates[] = array(
                     'code'        => 'local_pickup',

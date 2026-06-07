@@ -33,6 +33,9 @@ function wc_clean( $value ) { // phpcs:ignore WordPress.NamingConventions.Prefix
 }
 
 function get_option( $name, $default = false ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
+    if ( isset( $GLOBALS['lawhaa_test_options'][ $name ] ) ) {
+        return $GLOBALS['lawhaa_test_options'][ $name ];
+    }
     return $default;
 }
 
@@ -150,6 +153,23 @@ lawhaa_test_assert_same(
     array( 'heavy_sink' => 307.0 ),
     lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 151, 400 ) )
 );
+
+// Group allowlists (pickup_groups/fast_groups) must still restrict pickup/fast delivery (see docs/FILTER-EXAMPLES.php).
+$GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] = array(
+    'fast_groups'   => array( 'local_15' ),
+    'pickup_groups' => array( 'local_15' ),
+);
+lawhaa_test_assert_same(
+    'fast_groups/pickup_groups limited to local_15 still serves Dammam',
+    array( 'center_delivery', 'mrsool', 'c4d', 'local_pickup' ),
+    array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 5, 200 ) ) )
+);
+lawhaa_test_assert_same(
+    'fast_groups/pickup_groups limited to local_15 drops fast/pickup for Qatif (local_25)',
+    array( 'center_delivery' ),
+    array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Qatif', 5, 200 ) ) )
+);
+unset( $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] );
 
 lawhaa_test_assert_same( 'COD allowed for center', true, Lawhaa_Shipping_Rules::cod_allowed_for_rate( 'center_delivery' ) );
 lawhaa_test_assert_same( 'COD blocked for Mrsool', false, Lawhaa_Shipping_Rules::cod_allowed_for_rate( 'mrsool' ) );
