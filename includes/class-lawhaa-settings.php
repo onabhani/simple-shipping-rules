@@ -73,25 +73,8 @@ final class Lawhaa_Settings {
         $this->number( $settings, 'center_cod_fee', __( 'COD fee', 'lawhaa-shipping-rules' ) );
         $this->section_close();
 
-        $this->section_open( __( 'MRSOOL Fast Shipping', 'lawhaa-shipping-rules' ) );
-        $this->checkbox( $settings, 'mrsool_enabled', __( 'Enable MRSOOL', 'lawhaa-shipping-rules' ) );
-        $this->textarea( $settings, 'mrsool_aliases', __( 'Allowed cities/districts', 'lawhaa-shipping-rules' ), __( 'One alias per line. Supports Arabic and English.', 'lawhaa-shipping-rules' ) );
-        $this->number( $settings, 'mrsool_max_kg', __( 'Max weight (kg)', 'lawhaa-shipping-rules' ) );
-        $this->number( $settings, 'mrsool_first_kg', __( 'First kg price', 'lawhaa-shipping-rules' ) );
-        $this->number( $settings, 'mrsool_extra_per_kg', __( 'Additional kg price', 'lawhaa-shipping-rules' ) );
-        $this->text( $settings, 'mrsool_delivery_estimate', __( 'Delivery estimate', 'lawhaa-shipping-rules' ) );
-        $this->checkbox( $settings, 'mrsool_cod_allowed', __( 'COD allowed', 'lawhaa-shipping-rules' ) );
-        $this->section_close();
-
-        $this->section_open( __( 'C4D Fast Shipping', 'lawhaa-shipping-rules' ) );
-        $this->checkbox( $settings, 'c4d_enabled', __( 'Enable C4D', 'lawhaa-shipping-rules' ) );
-        $this->textarea( $settings, 'c4d_aliases', __( 'Allowed cities/districts', 'lawhaa-shipping-rules' ), __( 'One alias per line. Supports Arabic and English.', 'lawhaa-shipping-rules' ) );
-        $this->number( $settings, 'c4d_max_kg', __( 'Max weight (kg)', 'lawhaa-shipping-rules' ) );
-        $this->number( $settings, 'c4d_first_kg', __( 'First kg price', 'lawhaa-shipping-rules' ) );
-        $this->number( $settings, 'c4d_extra_per_kg', __( 'Additional kg price', 'lawhaa-shipping-rules' ) );
-        $this->text( $settings, 'c4d_delivery_estimate', __( 'Delivery estimate', 'lawhaa-shipping-rules' ) );
-        $this->checkbox( $settings, 'c4d_cod_allowed', __( 'COD allowed', 'lawhaa-shipping-rules' ) );
-        $this->section_close();
+        $this->fast_section( $settings, __( 'MRSOOL Fast Shipping', 'lawhaa-shipping-rules' ), 'mrsool', __( 'Enable MRSOOL', 'lawhaa-shipping-rules' ) );
+        $this->fast_section( $settings, __( 'C4D Fast Shipping', 'lawhaa-shipping-rules' ), 'c4d', __( 'Enable C4D', 'lawhaa-shipping-rules' ) );
 
         $this->section_open( __( 'Local Pickup', 'lawhaa-shipping-rules' ) );
         $this->checkbox( $settings, 'pickup_enabled', __( 'Enable local pickup', 'lawhaa-shipping-rules' ) );
@@ -128,6 +111,18 @@ final class Lawhaa_Settings {
 
         $this->section_open( __( 'Debug / Compatibility', 'lawhaa-shipping-rules' ) );
         $this->checkbox( $settings, 'debug_enabled', __( 'Enable WooCommerce debug logging', 'lawhaa-shipping-rules' ) );
+        $this->section_close();
+    }
+
+    private function fast_section( $settings, $title, $prefix, $enable_label ) {
+        $this->section_open( $title );
+        $this->checkbox( $settings, $prefix . '_enabled', $enable_label );
+        $this->textarea( $settings, $prefix . '_aliases', __( 'Allowed cities/districts', 'lawhaa-shipping-rules' ), __( 'One alias per line. Supports Arabic and English.', 'lawhaa-shipping-rules' ) );
+        $this->number( $settings, $prefix . '_max_kg', __( 'Max weight (kg)', 'lawhaa-shipping-rules' ) );
+        $this->number( $settings, $prefix . '_first_kg', __( 'First kg price', 'lawhaa-shipping-rules' ) );
+        $this->number( $settings, $prefix . '_extra_per_kg', __( 'Additional kg price', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, $prefix . '_delivery_estimate', __( 'Delivery estimate', 'lawhaa-shipping-rules' ) );
+        $this->checkbox( $settings, $prefix . '_cod_allowed', __( 'COD allowed', 'lawhaa-shipping-rules' ) );
         $this->section_close();
     }
 
