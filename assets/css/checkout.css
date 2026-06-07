@@ -1,0 +1,5 @@
+/* Small readability improvement for generated shipping rate labels. */
+.woocommerce-checkout-review-order-table .woocommerce-shipping-methods label,
+.wc-block-components-shipping-rates-control__package .wc-block-components-radio-control__label {
+  line-height: 1.45;
+}

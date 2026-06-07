@@ -1,0 +1,101 @@
+diff -ruN oto_old/assets/js/ksa-checkout.js oto_new/assets/js/ksa-checkout.js
+--- oto_old/assets/js/ksa-checkout.js	2026-03-30 10:01:54.000000000 +0000
++++ oto_new/assets/js/ksa-checkout.js	2026-06-07 17:01:41.438129847 +0000
+@@ -7,6 +7,13 @@
+   var typingTimer;
+   var doneTypingInterval = 1000;
+ 
++  function otoksaText(key, fallback) {
++    if (window.otoksa_vars && otoksa_vars.i18n && otoksa_vars.i18n[key]) {
++      return otoksa_vars.i18n[key];
++    }
++    return fallback;
++  }
++
+   // ============================================================
+   // COUNTRY-BASED VISIBILITY (Saudi Arabia Only)
+   // ============================================================
+@@ -285,7 +292,7 @@
+ 
+       // 2. Length Check.
+       if (code.length < 8) {
+-        showFeedback($input, 'error', 'Address code is too short (must be 8 characters).');
++        showFeedback($input, 'error', otoksaText('address_code_too_short', 'Address code is too short (must be 8 characters).'));
+         clearAllFields();
+         return;
+       }
+@@ -293,7 +300,7 @@
+       // 3. Format Check (first 4 letters, last 4 digits)
+       var format_regex = /^[a-zA-Z]{4}\d{4}$/;
+       if (!format_regex.test(code)) {
+-        showFeedback($input, 'error', 'Address code must be 4 letters followed by 4 digits (e.g., ABCD1234).');
++        showFeedback($input, 'error', otoksaText('address_code_invalid_format', 'Address code must be 4 letters followed by 4 digits (e.g., ABCD1234).'));
+         clearAllFields();
+         return;
+       }
+@@ -319,15 +326,17 @@
+           if (response.success && response.data) {
+             showFeedback($input, 'success');
+             updateAllFields(response.data);
++            window.dispatchEvent(new CustomEvent('otoksa:address_validated', { detail: response.data }));
++            jQuery(document.body).trigger('update_checkout');
+           } else {
+-            showFeedback($input, 'error', response.data.message || 'Address not found.');
++            showFeedback($input, 'error', (response.data && response.data.message) || otoksaText('address_not_found', 'Address not found.'));
+             clearAllFields();
+           }
+         },
+         error: function() {
+           $wrapper.find('.otoksa-spinner').remove();
+           $input.css('opacity', '1');
+-          showFeedback($input, 'error', 'Connection error.');
++          showFeedback($input, 'error', otoksaText('connection_error', 'Connection error.'));
+           clearAllFields();
+         }
+       });
+diff -ruN oto_old/includes/class-blocks-integration.php oto_new/includes/class-blocks-integration.php
+--- oto_old/includes/class-blocks-integration.php	2026-03-30 10:01:54.000000000 +0000
++++ oto_new/includes/class-blocks-integration.php	2026-06-07 17:01:41.436796902 +0000
+@@ -56,6 +56,12 @@
+       'security' => wp_create_nonce( 'otoksa_nonce' ),
+       'city_mapping' => get_option( 'otoksa_city_mapping', get_option( 'ksa_nav_city_mapping', 'city' ) ),
+       'shortcode_required' => get_option( 'otoksa_shortcode_required', get_option( 'ksa_nav_shortcode_required', '' ) ) === '1',
++      'i18n' => array(
++        'address_code_too_short' => __( 'Address code is too short (must be 8 characters).', 'ksa-national-address-validator' ),
++        'address_code_invalid_format' => __( 'Address code must be 4 letters followed by 4 digits (e.g., ABCD1234).', 'ksa-national-address-validator' ),
++        'address_not_found' => __( 'Address not found.', 'ksa-national-address-validator' ),
++        'connection_error' => __( 'Connection error.', 'ksa-national-address-validator' ),
++      ),
+     ));
+   }
+ }
+diff -ruN oto_old/includes/class-checkout-handler.php oto_new/includes/class-checkout-handler.php
+--- oto_old/includes/class-checkout-handler.php	2026-03-30 10:01:54.000000000 +0000
++++ oto_new/includes/class-checkout-handler.php	2026-06-07 17:01:41.437446491 +0000
+@@ -227,6 +227,12 @@
+         'security' => wp_create_nonce( 'otoksa_nonce' ),
+         'city_mapping' => get_option( 'otoksa_city_mapping', get_option( 'ksa_nav_city_mapping', 'city' ) ),
+         'shortcode_required' => get_option( 'otoksa_shortcode_required', get_option( 'ksa_nav_shortcode_required', '' ) ) === '1',
++      'i18n' => array(
++        'address_code_too_short' => __( 'Address code is too short (must be 8 characters).', 'ksa-national-address-validator' ),
++        'address_code_invalid_format' => __( 'Address code must be 4 letters followed by 4 digits (e.g., ABCD1234).', 'ksa-national-address-validator' ),
++        'address_not_found' => __( 'Address not found.', 'ksa-national-address-validator' ),
++        'connection_error' => __( 'Connection error.', 'ksa-national-address-validator' ),
++      ),
+       ));
+     }
+   }
+diff -ruN oto_old/ksa-national-address-validator.php oto_new/ksa-national-address-validator.php
+--- oto_old/ksa-national-address-validator.php	2026-03-30 10:01:54.000000000 +0000
++++ oto_new/ksa-national-address-validator.php	2026-06-07 17:01:41.436456685 +0000
+@@ -22,6 +22,10 @@
+ 
+ define( 'OTOKSA_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
+ 
++add_action( 'init', function() {
++  load_plugin_textdomain( 'ksa-national-address-validator', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
++} );
++
+ // 1. Include the new files
+ require_once OTOKSA_PLUGIN_PATH . 'includes/class-checkout-handler.php';
+ require_once OTOKSA_PLUGIN_PATH . 'includes/class-settings.php';

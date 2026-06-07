@@ -1,0 +1,88 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: KSA National Address Validator 1.2.2\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Settings"
+msgstr "الإعدادات"
+
+msgid "National Address Short Code"
+msgstr "رمز العنوان الوطني المختصر"
+
+msgid "National Address Short Code (e.g. ABCD1234)"
+msgstr "رمز العنوان الوطني المختصر (مثال: ABCD1234)"
+
+msgid "e.g. ABCD1234"
+msgstr "مثال: ABCD1234"
+
+msgid "National Address Short Code is required for Saudi Arabia orders."
+msgstr "رمز العنوان الوطني المختصر مطلوب للطلبات داخل السعودية."
+
+msgid "Invalid Code"
+msgstr "الرمز غير صحيح"
+
+msgid "KSA National Address Validator is not connected. Please connect in plugin settings."
+msgstr "إضافة التحقق من العنوان الوطني غير مرتبطة. يرجى الربط من إعدادات الإضافة."
+
+msgid "Address not found or invalid response from API."
+msgstr "لم يتم العثور على العنوان أو أن استجابة API غير صحيحة."
+
+msgid "City Mapping"
+msgstr "ربط المدينة"
+
+msgid "Set Shortaddress Field Required"
+msgstr "جعل حقل العنوان المختصر إلزاميًا"
+
+msgid "Town / City"
+msgstr "المدينة"
+
+msgid "State / County"
+msgstr "المنطقة / الحي"
+
+msgid "Choose which checkout field the city from National Address will be mapped to."
+msgstr "اختر حقل الدفع الذي سيتم ربط المدينة القادمة من العنوان الوطني به."
+
+msgid "Make the National Address Short Code field required for Saudi Arabia orders"
+msgstr "اجعل رمز العنوان الوطني المختصر إلزاميًا للطلبات داخل السعودية"
+
+msgid "When enabled, customers must enter a valid National Address Short Code to complete checkout for Saudi Arabia billing addresses."
+msgstr "عند التفعيل، يجب على العملاء إدخال رمز عنوان وطني مختصر صحيح لإكمال الطلبات ذات عنوان فوترة داخل السعودية."
+
+msgid "Permission denied."
+msgstr "لا تملك الصلاحية."
+
+msgid "Username and password are required."
+msgstr "اسم المستخدم وكلمة المرور مطلوبان."
+
+msgid "2FA is required for this account."
+msgstr "المصادقة الثنائية مطلوبة لهذا الحساب."
+
+msgid "No refresh token received from API."
+msgstr "لم يتم استلام رمز التحديث من API."
+
+msgid "Connected successfully."
+msgstr "تم الربط بنجاح."
+
+msgid "Login failed."
+msgstr "فشل تسجيل الدخول."
+
+msgid "2FA code is required."
+msgstr "رمز المصادقة الثنائية مطلوب."
+
+msgid "Disconnected successfully."
+msgstr "تم إلغاء الربط بنجاح."
+
+msgid "Address code is too short (must be 8 characters)."
+msgstr "رمز العنوان قصير جدًا، يجب أن يتكون من 8 خانات."
+
+msgid "Address code must be 4 letters followed by 4 digits (e.g., ABCD1234)."
+msgstr "يجب أن يكون رمز العنوان 4 أحرف ثم 4 أرقام، مثل ABCD1234."
+
+msgid "Address not found."
+msgstr "لم يتم العثور على العنوان."
+
+msgid "Connection error."
+msgstr "حدث خطأ في الاتصال."

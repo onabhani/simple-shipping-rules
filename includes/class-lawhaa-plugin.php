@@ -1,0 +1,75 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+final class Lawhaa_Shipping_Plugin {
+    private static $instance = null;
+
+    public static function instance() {
+        if ( null === self::$instance ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    private function __construct() {
+        add_action( 'woocommerce_shipping_init', array( $this, 'shipping_init' ) );
+        add_filter( 'woocommerce_shipping_methods', array( $this, 'register_shipping_method' ) );
+
+        new Lawhaa_Checkout();
+
+        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_checkout_assets' ) );
+        add_filter( 'plugin_action_links_' . plugin_basename( LAWHAASHIP_FILE ), array( $this, 'plugin_action_links' ) );
+    }
+
+    public function shipping_init() {
+        // Class is already loaded by bootstrap; this hook only ensures WooCommerce is ready.
+    }
+
+    public function register_shipping_method( $methods ) {
+        $methods['lawhaa_rules'] = 'Lawhaa_Shipping_Method';
+        return $methods;
+    }
+
+    public function enqueue_checkout_assets() {
+        if ( ! function_exists( 'is_checkout' ) || ! is_checkout() ) {
+            return;
+        }
+
+        wp_enqueue_style(
+            'lawhaa-shipping-checkout',
+            LAWHAASHIP_URL . 'assets/css/checkout.css',
+            array(),
+            LAWHAASHIP_VERSION
+        );
+
+        wp_enqueue_script(
+            'lawhaa-shipping-checkout',
+            LAWHAASHIP_URL . 'assets/js/checkout.js',
+            array( 'jquery' ),
+            LAWHAASHIP_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'lawhaa-shipping-checkout',
+            'lawhaaShipping',
+            array(
+                'debug' => defined( 'WP_DEBUG' ) && WP_DEBUG,
+                'i18n'  => array(
+                    'updating' => __( 'Updating shipping options...', 'lawhaa-shipping-rules' ),
+                ),
+            )
+        );
+    }
+
+    public function plugin_action_links( $links ) {
+        $settings_url = admin_url( 'admin.php?page=wc-settings&tab=shipping' );
+        array_unshift(
+            $links,
+            '<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'Shipping settings', 'lawhaa-shipping-rules' ) . '</a>'
+        );
+        return $links;
+    }
+}
