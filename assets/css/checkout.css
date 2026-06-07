@@ -3,3 +3,9 @@
 .wc-block-components-shipping-rates-control__package .wc-block-components-radio-control__label {
   line-height: 1.45;
 }
+
+/* Lawhaa rates use city/district and do not require customer-entered ZIP/postcode in the cart calculator. */
+.woocommerce-shipping-calculator #calc_shipping_postcode_field,
+.woocommerce-shipping-calculator input#calc_shipping_postcode {
+  display: none !important;
+}

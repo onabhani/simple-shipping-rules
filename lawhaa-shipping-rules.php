@@ -25,6 +25,13 @@ define( 'LAWHAASHIP_FILE', __FILE__ );
 define( 'LAWHAASHIP_PATH', plugin_dir_path( __FILE__ ) );
 define( 'LAWHAASHIP_URL', plugin_dir_url( __FILE__ ) );
 
+register_activation_hook( __FILE__, static function() {
+    require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-shipping-rules.php';
+    if ( false === get_option( 'lawhaa_shipping_rules_settings', false ) ) {
+        add_option( 'lawhaa_shipping_rules_settings', Lawhaa_Shipping_Rules::default_config() );
+    }
+} );
+
 add_action( 'before_woocommerce_init', static function() {
     if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
         \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
@@ -42,6 +49,7 @@ add_action( 'plugins_loaded', static function() {
     }
 
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-shipping-rules.php';
+    require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-settings.php';
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-shipping-method.php';
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-checkout.php';
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-plugin.php';
