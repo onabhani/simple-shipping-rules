@@ -17,6 +17,10 @@ final class Lawhaa_Shipping_Plugin {
         add_action( 'woocommerce_shipping_init', array( $this, 'shipping_init' ) );
         add_filter( 'woocommerce_shipping_methods', array( $this, 'register_shipping_method' ) );
 
+        // Keep the request-level config/alias cache fresh after an admin save.
+        add_action( 'add_option_lawhaa_shipping_rules_settings', array( 'Lawhaa_Shipping_Rules', 'reset_cache' ) );
+        add_action( 'update_option_lawhaa_shipping_rules_settings', array( 'Lawhaa_Shipping_Rules', 'reset_cache' ) );
+
         new Lawhaa_Settings();
         new Lawhaa_Checkout();
 

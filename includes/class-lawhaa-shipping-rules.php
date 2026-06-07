@@ -10,14 +10,38 @@ final class Lawhaa_Shipping_Rules {
     const GROUP_UNKNOWN  = 'unknown';
 
     /**
+     * Request-level memoization. config() and aliases() are called many times per
+     * shipping calculation; resolving them once keeps the rate hot path cheap and
+     * guarantees a single config snapshot per request. Reset via reset_cache() when
+     * the settings option changes (see reset hooks in Lawhaa_Shipping_Plugin).
+     */
+    private static $config_cache  = null;
+    private static $aliases_cache = null;
+
+    /**
+     * Clear the request-level config/alias caches. Hooked to add/update of the
+     * settings option so an admin save is reflected within the same request.
+     */
+    public static function reset_cache() {
+        self::$config_cache  = null;
+        self::$aliases_cache = null;
+    }
+
+    /**
      * Default rule values. All values can be changed by the lawhaa_shipping_rule_config filter.
      */
     public static function config() {
+        if ( null !== self::$config_cache ) {
+            return self::$config_cache;
+        }
+
         $saved  = get_option( 'lawhaa_shipping_rules_settings', array() );
         $config = self::sanitize_config( is_array( $saved ) ? $saved : array() );
         $config = apply_filters( 'lawhaa_shipping_rule_config', $config );
 
-        return self::sanitize_config( $config );
+        self::$config_cache = self::sanitize_config( $config );
+
+        return self::$config_cache;
     }
 
     public static function sanitize_config( $config ) {
@@ -373,7 +397,7 @@ final class Lawhaa_Shipping_Rules {
         $normalized = $value ?: '';
 
         if ( count( $cache ) > 500 ) {
-            array_shift( $cache );
+            unset( $cache[ array_key_first( $cache ) ] );
         }
         $cache[ $raw_value ] = $normalized;
 
@@ -381,6 +405,10 @@ final class Lawhaa_Shipping_Rules {
     }
 
     public static function aliases() {
+        if ( null !== self::$aliases_cache ) {
+            return self::$aliases_cache;
+        }
+
         $config  = self::config();
         $aliases = array(
             self::GROUP_LOCAL_15 => self::alias_lines( $config['local_15_aliases'] ),
@@ -398,7 +426,8 @@ final class Lawhaa_Shipping_Rules {
 
         $filtered = apply_filters( 'lawhaa_shipping_city_aliases', $normalized );
         if ( ! is_array( $filtered ) ) {
-            return $normalized;
+            self::$aliases_cache = $normalized;
+            return self::$aliases_cache;
         }
 
         foreach ( array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25, 'fast_local', 'mrsool', 'c4d', 'pickup' ) as $group ) {
@@ -406,7 +435,9 @@ final class Lawhaa_Shipping_Rules {
             $filtered[ $group ] = self::normalize_alias_list( $items );
         }
 
-        return $filtered;
+        self::$aliases_cache = $filtered;
+
+        return self::$aliases_cache;
     }
 
     private static function normalize_alias_list( $items ) {

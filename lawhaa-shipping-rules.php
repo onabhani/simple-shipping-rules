@@ -27,8 +27,13 @@ define( 'LAWHAASHIP_URL', plugin_dir_url( __FILE__ ) );
 
 register_activation_hook( __FILE__, static function() {
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-shipping-rules.php';
-    if ( false === get_option( 'lawhaa_shipping_rules_settings', false ) ) {
-        add_option( 'lawhaa_shipping_rules_settings', Lawhaa_Shipping_Rules::default_config() );
+    // The settings array is sizeable and only needed on cart/checkout/admin, so it
+    // is not autoloaded. config() memoizes the single get_option() per request.
+    $existing = get_option( 'lawhaa_shipping_rules_settings', false );
+    if ( false === $existing ) {
+        add_option( 'lawhaa_shipping_rules_settings', Lawhaa_Shipping_Rules::default_config(), '', 'no' );
+    } else {
+        update_option( 'lawhaa_shipping_rules_settings', $existing, 'no' );
     }
 } );
 

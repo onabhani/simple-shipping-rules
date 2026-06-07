@@ -154,11 +154,50 @@ lawhaa_test_assert_same(
     lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 151, 400 ) )
 );
 
+// Boundary cases at the most expensive thresholds (lock >/<= semantics against off-by-one).
+lawhaa_test_assert_same(
+    'Mrsool/C4D offered at exactly mrsool_max_kg (50)',
+    array( 'center_delivery', 'mrsool', 'c4d', 'local_pickup' ),
+    array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 50, 200 ) ) )
+);
+lawhaa_test_assert_same(
+    'Mrsool/C4D dropped just past mrsool_max_kg (50.01)',
+    array( 'center_delivery', 'local_pickup' ),
+    array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 50.01, 200 ) ) )
+);
+lawhaa_test_assert_same(
+    'Carrier free at exactly carrier_free_max_kg (50, amount >= 350)',
+    array( 'carrier_free' => 0.0 ),
+    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 50, 400 ) )
+);
+lawhaa_test_assert_same(
+    'Carrier not free just past carrier_free_max_kg (50.01)',
+    array( 'carrier' => 63.0 ),
+    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 50.01, 400 ) )
+);
+lawhaa_test_assert_same(
+    'Heavy NOT triggered at exactly heavy_threshold_kg (150) — ships as carrier',
+    array( 'carrier' => 174.0 ),
+    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 150, 400 ) )
+);
+lawhaa_test_assert_same(
+    'Heavy triggered just past heavy_threshold_kg (150.01)',
+    array( 'heavy_sink' => 307.0 ),
+    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 150.01, 400 ) )
+);
+lawhaa_test_assert_same(
+    'Zero-weight local cart bills fast methods at first-kg minimum',
+    array( 'center_delivery' => 15.0, 'mrsool' => 30.0, 'c4d' => 25.0, 'local_pickup' => 0.0 ),
+    lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 0, 200 ) )
+);
+
 // Group allowlists (pickup_groups/fast_groups) must still restrict pickup/fast delivery (see docs/FILTER-EXAMPLES.php).
+// config() memoizes per request, so reset the cache whenever the stored option changes mid-test.
 $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] = array(
     'fast_groups'   => array( 'local_15' ),
     'pickup_groups' => array( 'local_15' ),
 );
+Lawhaa_Shipping_Rules::reset_cache();
 lawhaa_test_assert_same(
     'fast_groups/pickup_groups limited to local_15 still serves Dammam',
     array( 'center_delivery', 'mrsool', 'c4d', 'local_pickup' ),
@@ -170,6 +209,7 @@ lawhaa_test_assert_same(
     array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Qatif', 5, 200 ) ) )
 );
 unset( $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] );
+Lawhaa_Shipping_Rules::reset_cache();
 
 lawhaa_test_assert_same( 'COD allowed for center', true, Lawhaa_Shipping_Rules::cod_allowed_for_rate( 'center_delivery' ) );
 lawhaa_test_assert_same( 'COD blocked for Mrsool', false, Lawhaa_Shipping_Rules::cod_allowed_for_rate( 'mrsool' ) );
