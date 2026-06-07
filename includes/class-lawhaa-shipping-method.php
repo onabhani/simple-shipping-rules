@@ -16,16 +16,22 @@ class Lawhaa_Shipping_Method extends WC_Shipping_Method {
 
     public function init() {
         $this->init_form_fields();
+        $this->init_instance_form_fields();
         $this->init_settings();
+        $this->init_instance_settings();
 
-        $this->enabled = $this->get_option( 'enabled', 'yes' );
-        $this->title   = $this->get_option( 'title', __( 'Lawhaa Shipping', 'lawhaa-shipping-rules' ) );
-        $this->debug   = 'yes' === $this->get_option( 'debug', 'no' );
+        $this->enabled = $this->get_instance_option( 'enabled', 'yes' );
+        $this->title   = $this->get_instance_option( 'title', __( 'Lawhaa Shipping', 'lawhaa-shipping-rules' ) );
+        $this->debug   = 'yes' === $this->get_instance_option( 'debug', 'no' );
 
         add_action( 'woocommerce_update_options_shipping_' . $this->id, array( $this, 'process_admin_options' ) );
     }
 
     public function init_form_fields() {
+        $this->form_fields = array();
+    }
+
+    public function init_instance_form_fields() {
         $this->instance_form_fields = array(
             'enabled' => array(
                 'title'   => __( 'Enable/Disable', 'lawhaa-shipping-rules' ),

@@ -12,6 +12,14 @@
 - `woocommerce_package_rates` defensively removes all other rates when heavy sink shipping is active.
 
 WooCommerce's official Shipping Method API expects custom rates to be added from `calculate_shipping()`, and that is the pattern used here.
+The zone method uses WooCommerce instance settings so each shipping-zone instance can be enabled, titled, and debugged independently.
+
+## Performance and security checks
+
+- Rule configuration is normalized after filtering so unknown keys are stripped, numeric costs/thresholds cannot become negative, non-numeric values fall back safely, and the carrier divisor falls back to a safe default if a custom filter returns zero.
+- Destination values are read from a small allowlist and array payloads are rejected before cleaning, preventing unexpected checkout/package shapes from reaching rate calculations.
+- Location normalization and the built-in city-alias table are cached in request memory to reduce repeated Unicode normalization work during checkout recalculations.
+- Checkout POST reads go through one sanitizing helper, and order metadata saved by the plugin is cleaned before storage.
 
 ## Why not use WooCommerce Zones only?
 

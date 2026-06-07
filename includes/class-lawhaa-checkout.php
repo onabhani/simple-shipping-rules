@@ -81,21 +81,33 @@ final class Lawhaa_Checkout {
             return;
         }
 
-        $country = isset( $_POST['ship_to_different_address'] ) && ! empty( $_POST['ship_to_different_address'] )
-            ? ( isset( $_POST['shipping_country'] ) ? wc_clean( wp_unslash( $_POST['shipping_country'] ) ) : '' )
-            : ( isset( $_POST['billing_country'] ) ? wc_clean( wp_unslash( $_POST['billing_country'] ) ) : '' );
+        $ship_to_different_address = '' !== self::posted_value( 'ship_to_different_address' );
+        $country                   = $ship_to_different_address ? self::posted_value( 'shipping_country' ) : self::posted_value( 'billing_country' );
 
         if ( strtoupper( $country ) !== 'SA' ) {
             return;
         }
 
-        $city = isset( $_POST['ship_to_different_address'] ) && ! empty( $_POST['ship_to_different_address'] )
-            ? ( isset( $_POST['shipping_city'] ) ? wc_clean( wp_unslash( $_POST['shipping_city'] ) ) : '' )
-            : ( isset( $_POST['billing_city'] ) ? wc_clean( wp_unslash( $_POST['billing_city'] ) ) : '' );
+        $city = $ship_to_different_address ? self::posted_value( 'shipping_city' ) : self::posted_value( 'billing_city' );
 
         if ( '' === trim( (string) $city ) ) {
             wc_add_notice( __( 'Please enter or validate the National Address so the city can be used to calculate shipping.', 'lawhaa-shipping-rules' ), 'error' );
         }
+    }
+
+
+    private static function posted_value( $key ) {
+        // WooCommerce validates the checkout nonce before running woocommerce_checkout_process.
+        if ( ! isset( $_POST[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            return '';
+        }
+
+        $value = wp_unslash( $_POST[ $key ] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        if ( is_array( $value ) ) {
+            return '';
+        }
+
+        return wc_clean( (string) $value );
     }
 
     public function save_order_rule_meta( $order, $data ) {
@@ -109,8 +121,8 @@ final class Lawhaa_Checkout {
             $order->update_meta_data( '_lawhaa_shipping_rate_family', Lawhaa_Shipping_Rules::rate_family( $code ) );
         }
 
-        $city     = $order->get_shipping_city() ?: $order->get_billing_city();
-        $district = $order->get_shipping_state() ?: $order->get_billing_state();
+        $city     = wc_clean( (string) ( $order->get_shipping_city() ?: $order->get_billing_city() ) );
+        $district = wc_clean( (string) ( $order->get_shipping_state() ?: $order->get_billing_state() ) );
         $group    = Lawhaa_Shipping_Rules::city_group( $city, $district );
 
         $order->update_meta_data( '_lawhaa_destination_city', $city );
