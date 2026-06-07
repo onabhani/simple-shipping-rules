@@ -46,7 +46,62 @@ final class Lawhaa_Shipping_Rules {
             'fast_groups'            => array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ),
         );
 
-        return apply_filters( 'lawhaa_shipping_rule_config', $config );
+        $config = apply_filters( 'lawhaa_shipping_rule_config', $config );
+
+        return self::sanitize_config( is_array( $config ) ? $config : array() );
+    }
+
+    public static function sanitize_config( $config ) {
+        $defaults = array(
+            'currency'               => 'SAR',
+            'center_free_min'        => 300.0,
+            'carrier_free_min'       => 350.0,
+            'carrier_free_max_kg'    => 50.0,
+            'fast_max_kg'            => 50.0,
+            'heavy_threshold_kg'     => 150.0,
+            'cod_carrier_fee'        => 15.0,
+            'center_local_15_cost'   => 15.0,
+            'center_local_25_cost'   => 25.0,
+            'mrsool_first_kg'        => 30.0,
+            'mrsool_extra_per_kg'    => 2.0,
+            'c4d_first_kg'           => 25.0,
+            'c4d_extra_per_kg'       => 1.0,
+            'carrier_first_10kg'     => 18.0,
+            'carrier_extra_step_kg'  => 0.9,
+            'carrier_extra_step_fee' => 1.0,
+            'heavy_first_10kg'       => 25.0,
+            'heavy_extra_per_kg'     => 2.0,
+            'pickup_groups'          => array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ),
+            'fast_groups'            => array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ),
+        );
+
+        $config = array_merge( $defaults, $config );
+
+        foreach ( $defaults as $key => $default ) {
+            if ( is_array( $default ) ) {
+                $groups = array();
+                foreach ( (array) $config[ $key ] as $group ) {
+                    if ( is_scalar( $group ) ) {
+                        $groups[] = (string) $group;
+                    }
+                }
+                $config[ $key ] = array_values( array_intersect( $groups, array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ) ) );
+                continue;
+            }
+
+            if ( 'currency' === $key ) {
+                $config[ $key ] = sanitize_text_field( (string) $config[ $key ] );
+                continue;
+            }
+
+            $config[ $key ] = max( 0.0, (float) $config[ $key ] );
+        }
+
+        if ( $config['carrier_extra_step_kg'] <= 0.0 ) {
+            $config['carrier_extra_step_kg'] = $defaults['carrier_extra_step_kg'];
+        }
+
+        return $config;
     }
 
     public static function package_context( $package ) {
@@ -89,7 +144,17 @@ final class Lawhaa_Shipping_Rules {
     }
 
     public static function get_destination_value( $package, $key ) {
-        return isset( $package['destination'][ $key ] ) ? wc_clean( wp_unslash( $package['destination'][ $key ] ) ) : '';
+        $allowed_keys = array( 'city', 'state', 'country', 'postcode' );
+        if ( ! in_array( $key, $allowed_keys, true ) || ! isset( $package['destination'][ $key ] ) ) {
+            return '';
+        }
+
+        $value = $package['destination'][ $key ];
+        if ( is_array( $value ) ) {
+            return '';
+        }
+
+        return wc_clean( wp_unslash( (string) $value ) );
     }
 
     public static function cart_amount() {
@@ -123,7 +188,14 @@ final class Lawhaa_Shipping_Rules {
     }
 
     public static function normalize_location( $value ) {
-        $value = trim( (string) $value );
+        static $cache = array();
+
+        $raw_value = (string) $value;
+        if ( isset( $cache[ $raw_value ] ) ) {
+            return $cache[ $raw_value ];
+        }
+
+        $value = trim( $raw_value );
         $value = html_entity_decode( $value, ENT_QUOTES, 'UTF-8' );
         $value = function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
 
@@ -146,29 +218,61 @@ final class Lawhaa_Shipping_Rules {
         // Keep only letters/numbers, then collapse.
         $value = preg_replace( '/[^\p{L}\p{N}]+/u', '', $value );
 
-        return $value ?: '';
+        $normalized = $value ?: '';
+
+        if ( count( $cache ) > 500 ) {
+            array_shift( $cache );
+        }
+        $cache[ $raw_value ] = $normalized;
+
+        return $normalized;
     }
 
     public static function aliases() {
-        $aliases = array(
-            self::GROUP_LOCAL_15 => array(
-                'dammam', 'aldammam', 'adammam', 'dammamcity', 'الدمام', 'دمام',
-                'saihat', 'sayhat', 'sihat', 'سيهات',
-            ),
-            self::GROUP_LOCAL_25 => array(
-                'qatif', 'qateef', 'alqatif', 'القطيف', 'قطيف',
-                'khobar', 'alkhobar', 'alKhobar', 'الخبر', 'خبر',
-                'tarout', 'tarut', 'taroot', 'تاروت',
-                'aziziyah', 'azizia', 'aziziah', 'alaziziyah', 'العزيزية', 'عزيزيه', 'العزيزيه', 'عزيزية',
-            ),
-        );
+        static $normalized = null;
 
-        $normalized = array();
-        foreach ( $aliases as $group => $items ) {
-            $normalized[ $group ] = array_values( array_unique( array_map( array( __CLASS__, 'normalize_location' ), $items ) ) );
+        if ( null === $normalized ) {
+            $aliases = array(
+                self::GROUP_LOCAL_15 => array(
+                    'dammam', 'aldammam', 'adammam', 'dammamcity', 'الدمام', 'دمام',
+                    'saihat', 'sayhat', 'sihat', 'سيهات',
+                ),
+                self::GROUP_LOCAL_25 => array(
+                    'qatif', 'qateef', 'alqatif', 'القطيف', 'قطيف',
+                    'khobar', 'alkhobar', 'alKhobar', 'الخبر', 'خبر',
+                    'tarout', 'tarut', 'taroot', 'تاروت',
+                    'aziziyah', 'azizia', 'aziziah', 'alaziziyah', 'العزيزية', 'عزيزيه', 'العزيزيه', 'عزيزية',
+                ),
+            );
+
+            $normalized = array();
+            foreach ( $aliases as $group => $items ) {
+                $normalized[ $group ] = self::normalize_alias_list( $items );
+            }
         }
 
-        return apply_filters( 'lawhaa_shipping_city_aliases', $normalized );
+        $filtered = apply_filters( 'lawhaa_shipping_city_aliases', $normalized );
+        if ( ! is_array( $filtered ) ) {
+            return $normalized;
+        }
+
+        foreach ( array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ) as $group ) {
+            $items = isset( $filtered[ $group ] ) ? (array) $filtered[ $group ] : array();
+            $filtered[ $group ] = self::normalize_alias_list( $items );
+        }
+
+        return $filtered;
+    }
+
+    private static function normalize_alias_list( $items ) {
+        $aliases = array();
+        foreach ( (array) $items as $item ) {
+            if ( is_scalar( $item ) ) {
+                $aliases[] = self::normalize_location( (string) $item );
+            }
+        }
+
+        return array_values( array_unique( array_filter( $aliases ) ) );
     }
 
     public static function city_group( $city, $district = '' ) {
@@ -177,6 +281,10 @@ final class Lawhaa_Shipping_Rules {
         $aliases      = self::aliases();
 
         foreach ( $aliases as $group => $keys ) {
+            if ( ! is_array( $keys ) ) {
+                continue;
+            }
+
             if ( in_array( $city_key, $keys, true ) || in_array( $district_key, $keys, true ) ) {
                 return apply_filters( 'lawhaa_shipping_city_group', $group, $city, $district, $city_key, $district_key );
             }
