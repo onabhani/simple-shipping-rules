@@ -10,6 +10,8 @@ final class Lawhaa_Checkout {
         add_action( 'woocommerce_checkout_create_order', array( $this, 'save_order_rule_meta' ), 20, 2 );
         add_action( 'woocommerce_checkout_process', array( $this, 'validate_checkout_destination' ) );
         add_filter( 'woocommerce_package_rates', array( $this, 'filter_conflicting_rates' ), 50, 2 );
+        add_filter( 'woocommerce_shipping_calculator_enable_postcode', '__return_false' );
+        add_filter( 'woocommerce_default_address_fields', array( $this, 'make_postcode_optional' ) );
     }
 
     public function selected_lawhaa_rate_code() {
@@ -63,17 +65,19 @@ final class Lawhaa_Checkout {
         }
 
         $code = $this->selected_lawhaa_rate_code();
-        if ( ! in_array( $code, Lawhaa_Shipping_Rules::carrier_codes(), true ) ) {
+        if ( ! $code || ! Lawhaa_Shipping_Rules::cod_allowed_for_rate( $code ) ) {
+            Lawhaa_Shipping_Rules::log_debug( 'COD fee decision', array( 'rate_code' => $code, 'cod_fee' => 0 ) );
             return;
         }
 
-        $config = Lawhaa_Shipping_Rules::config();
-        $fee    = isset( $config['cod_carrier_fee'] ) ? (float) $config['cod_carrier_fee'] : 15.0;
+        $fee = Lawhaa_Shipping_Rules::cod_fee_for_rate( $code );
         if ( $fee <= 0 ) {
+            Lawhaa_Shipping_Rules::log_debug( 'COD fee decision', array( 'rate_code' => $code, 'cod_fee' => 0 ) );
             return;
         }
 
         $cart->add_fee( __( 'Cash on delivery fee', 'lawhaa-shipping-rules' ), $fee, false );
+        Lawhaa_Shipping_Rules::log_debug( 'COD fee decision', array( 'rate_code' => $code, 'cod_fee' => $fee ) );
     }
 
     public function validate_checkout_destination() {
@@ -81,21 +85,41 @@ final class Lawhaa_Checkout {
             return;
         }
 
-        $country = isset( $_POST['ship_to_different_address'] ) && ! empty( $_POST['ship_to_different_address'] )
-            ? ( isset( $_POST['shipping_country'] ) ? wc_clean( wp_unslash( $_POST['shipping_country'] ) ) : '' )
-            : ( isset( $_POST['billing_country'] ) ? wc_clean( wp_unslash( $_POST['billing_country'] ) ) : '' );
+        $ship_to_different_address = '' !== self::posted_value( 'ship_to_different_address' );
+        $country                   = $ship_to_different_address ? self::posted_value( 'shipping_country' ) : self::posted_value( 'billing_country' );
 
         if ( strtoupper( $country ) !== 'SA' ) {
             return;
         }
 
-        $city = isset( $_POST['ship_to_different_address'] ) && ! empty( $_POST['ship_to_different_address'] )
-            ? ( isset( $_POST['shipping_city'] ) ? wc_clean( wp_unslash( $_POST['shipping_city'] ) ) : '' )
-            : ( isset( $_POST['billing_city'] ) ? wc_clean( wp_unslash( $_POST['billing_city'] ) ) : '' );
+        $city = $ship_to_different_address ? self::posted_value( 'shipping_city' ) : self::posted_value( 'billing_city' );
 
         if ( '' === trim( (string) $city ) ) {
             wc_add_notice( __( 'Please enter or validate the National Address so the city can be used to calculate shipping.', 'lawhaa-shipping-rules' ), 'error' );
         }
+    }
+
+
+    private static function posted_value( $key ) {
+        // WooCommerce validates the checkout nonce before running woocommerce_checkout_process.
+        if ( ! isset( $_POST[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            return '';
+        }
+
+        $value = wp_unslash( $_POST[ $key ] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        if ( is_array( $value ) ) {
+            return '';
+        }
+
+        return wc_clean( (string) $value );
+    }
+
+    public function make_postcode_optional( $fields ) {
+        if ( isset( $fields['postcode'] ) ) {
+            $fields['postcode']['required'] = false;
+        }
+
+        return $fields;
     }
 
     public function save_order_rule_meta( $order, $data ) {
@@ -109,8 +133,8 @@ final class Lawhaa_Checkout {
             $order->update_meta_data( '_lawhaa_shipping_rate_family', Lawhaa_Shipping_Rules::rate_family( $code ) );
         }
 
-        $city     = $order->get_shipping_city() ?: $order->get_billing_city();
-        $district = $order->get_shipping_state() ?: $order->get_billing_state();
+        $city     = wc_clean( (string) ( $order->get_shipping_city() ?: $order->get_billing_city() ) );
+        $district = wc_clean( (string) ( $order->get_shipping_state() ?: $order->get_shipping_address_2() ?: $order->get_billing_state() ?: $order->get_billing_address_2() ) );
         $group    = Lawhaa_Shipping_Rules::city_group( $city, $district );
 
         $order->update_meta_data( '_lawhaa_destination_city', $city );
@@ -120,7 +144,7 @@ final class Lawhaa_Checkout {
     }
 
     /**
-     * Defensive cleanup: if another shipping method exposes stale Lawhaa rates, heavy sink must win.
+     * Defensive cleanup: if stale Lawhaa rates exist, heavy sink must win within this plugin's rates.
      */
     public function filter_conflicting_rates( $rates, $package ) {
         $has_heavy = false;
@@ -136,7 +160,7 @@ final class Lawhaa_Checkout {
         }
 
         foreach ( $rates as $rate_id => $rate ) {
-            if ( false === strpos( (string) $rate_id, 'lawhaa_rules:heavy_sink' ) ) {
+            if ( false !== strpos( (string) $rate_id, 'lawhaa_rules:' ) && false === strpos( (string) $rate_id, 'lawhaa_rules:heavy_sink' ) ) {
                 unset( $rates[ $rate_id ] );
             }
         }
