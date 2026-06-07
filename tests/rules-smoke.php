@@ -218,6 +218,18 @@ lawhaa_test_assert_same(
     Lawhaa_Shipping_Rules::carrier_cost( array( 'bad' ), array( 'carrier_extra_step_kg' => 0 ) )
 );
 
+
+$conflict_files = array(
+    'docs/IMPLEMENTATION-NOTES.md',
+    'includes/class-lawhaa-checkout.php',
+    'includes/class-lawhaa-shipping-rules.php',
+    'tests/rules-smoke.php',
+);
+foreach ( $conflict_files as $conflict_file ) {
+    $contents = file_get_contents( __DIR__ . '/../' . $conflict_file );
+    lawhaa_test_assert_same( $conflict_file . ' has no conflict markers', false, false !== strpos( $contents, str_repeat( '<', 7 ) ) || false !== strpos( $contents, str_repeat( '=', 7 ) ) || false !== strpos( $contents, str_repeat( '>', 7 ) ) );
+}
+
 if ( $failures ) {
     fwrite( STDERR, implode( PHP_EOL, $failures ) . PHP_EOL );
     exit( 1 );

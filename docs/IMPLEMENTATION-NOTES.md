@@ -30,6 +30,10 @@ City and district aliases are stored one value per line and are normalized befor
 
 The plugin owns Lawhaa COD availability and fee logic. Disable old custom snippets that add COD fees or hide COD for these same Lawhaa rates, otherwise WooCommerce may show duplicate or conflicting behavior. WooCommerce recalculates fees when the selected payment/shipping method changes; the frontend script debounces payment-method refreshes to one checkout update.
 
+## Conflict resolution checks
+
+The smoke test verifies that the files most likely to conflict during review (`docs/IMPLEMENTATION-NOTES.md`, `includes/class-lawhaa-checkout.php`, `includes/class-lawhaa-shipping-rules.php`, and `tests/rules-smoke.php`) do not contain Git conflict markers before release.
+
 ## Performance and security checks
 
 - Rule configuration is normalized after filtering so unknown keys are stripped, numeric costs/thresholds cannot become negative, non-numeric values fall back safely, and the carrier divisor falls back to a safe default if a custom filter returns zero.
