@@ -9,6 +9,10 @@ If GitHub still says this PR has conflicts in these files:
 
 then the conflict is between the PR branch and the current target branch on GitHub, not unresolved conflict markers in this working tree. The local tree should stay clean and the smoke test checks these files for conflict markers.
 
+## Codex limitation
+
+Codex cannot update a PR branch after that PR branch has been modified outside of Codex. If the GitHub PR still shows conflicts and you cannot use GitHub's "Update branch" button, create a new clean PR instead of continuing to push to the conflicted PR.
+
 ## Recommended path
 
 Prefer updating the existing PR branch if you can push to it:
