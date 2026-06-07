@@ -32,7 +32,6 @@ function wc_clean( $value ) { // phpcs:ignore WordPress.NamingConventions.Prefix
     return is_array( $value ) ? array_map( 'wc_clean', $value ) : sanitize_text_field( $value );
 }
 
-
 function get_option( $name, $default = false ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
     return $default;
 }
@@ -217,7 +216,6 @@ lawhaa_test_assert_same(
     18.0,
     Lawhaa_Shipping_Rules::carrier_cost( array( 'bad' ), array( 'carrier_extra_step_kg' => 0 ) )
 );
-
 
 $conflict_files = array(
     'docs/IMPLEMENTATION-NOTES.md',
