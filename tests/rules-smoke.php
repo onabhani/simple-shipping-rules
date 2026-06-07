@@ -36,6 +36,14 @@ require __DIR__ . '/../includes/class-lawhaa-shipping-rules.php';
 
 $failures = array();
 
+set_error_handler(
+    function( $severity, $message, $file, $line ) {
+        global $failures;
+        $failures[] = sprintf( 'PHP warning/notice: %s in %s:%d', $message, $file, $line );
+        return true;
+    }
+);
+
 function lawhaa_test_assert_same( $label, $expected, $actual ) {
     global $failures;
     if ( $expected !== $actual ) {
@@ -134,6 +142,18 @@ lawhaa_test_assert_same(
 );
 
 lawhaa_test_assert_same(
+    'Non-numeric config uses default',
+    300.0,
+    Lawhaa_Shipping_Rules::sanitize_config( array( 'center_free_min' => array( 'bad' ) ) )['center_free_min']
+);
+
+lawhaa_test_assert_same(
+    'Unknown config keys are stripped',
+    false,
+    array_key_exists( 'unexpected_key', Lawhaa_Shipping_Rules::sanitize_config( array( 'unexpected_key' => 'value' ) ) )
+);
+
+lawhaa_test_assert_same(
     'Nested group config entries are ignored',
     array( 'local_15' ),
     Lawhaa_Shipping_Rules::sanitize_config( array( 'pickup_groups' => array( array( 'bad' ), 'local_15' ) ) )['pickup_groups']
@@ -146,9 +166,33 @@ lawhaa_test_assert_same(
 );
 
 lawhaa_test_assert_same(
+    'Non-array destination is rejected',
+    '',
+    Lawhaa_Shipping_Rules::get_destination_value( array( 'destination' => 'Dammam' ), 'city' )
+);
+
+lawhaa_test_assert_same(
     'Unknown destination keys are rejected',
     '',
     Lawhaa_Shipping_Rules::get_destination_value( array( 'destination' => array( 'email' => 'x@example.test' ) ), 'email' )
+);
+
+lawhaa_test_assert_same(
+    'Array locations normalize to empty string',
+    '',
+    Lawhaa_Shipping_Rules::normalize_location( array( 'Dammam' ) )
+);
+
+lawhaa_test_assert_same(
+    'Invalid rate code payload is rejected',
+    '',
+    Lawhaa_Shipping_Rules::parse_rate_code( array( 'lawhaa_rules:carrier' ) )
+);
+
+lawhaa_test_assert_same(
+    'Carrier cost tolerates unsafe public inputs',
+    18.0,
+    Lawhaa_Shipping_Rules::carrier_cost( array( 'bad' ), array( 'carrier_extra_step_kg' => 0 ) )
 );
 
 if ( $failures ) {

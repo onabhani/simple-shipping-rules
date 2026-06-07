@@ -16,7 +16,7 @@ The zone method uses WooCommerce instance settings so each shipping-zone instanc
 
 ## Performance and security checks
 
-- Rule configuration is normalized after filtering so numeric costs/thresholds cannot become negative, and the carrier divisor falls back to a safe default if a custom filter returns zero.
+- Rule configuration is normalized after filtering so unknown keys are stripped, numeric costs/thresholds cannot become negative, non-numeric values fall back safely, and the carrier divisor falls back to a safe default if a custom filter returns zero.
 - Destination values are read from a small allowlist and array payloads are rejected before cleaning, preventing unexpected checkout/package shapes from reaching rate calculations.
 - Location normalization and the built-in city-alias table are cached in request memory to reduce repeated Unicode normalization work during checkout recalculations.
 - Checkout POST reads go through one sanitizing helper, and order metadata saved by the plugin is cleaned before storage.
