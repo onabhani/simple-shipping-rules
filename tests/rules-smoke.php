@@ -32,6 +32,22 @@ function wc_clean( $value ) { // phpcs:ignore WordPress.NamingConventions.Prefix
     return is_array( $value ) ? array_map( 'wc_clean', $value ) : sanitize_text_field( $value );
 }
 
+function get_option( $name, $default = false ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
+    return $default;
+}
+
+function get_locale() { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
+    return 'en_US';
+}
+
+function wc_format_decimal( $number, $dp = false ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
+    return false === $dp ? (string) $number : number_format( (float) $number, (int) $dp, '.', '' );
+}
+
+function wc_price( $price ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
+    return (string) $price . ' SAR';
+}
+
 require __DIR__ . '/../includes/class-lawhaa-shipping-rules.php';
 
 $failures = array();
@@ -109,6 +125,12 @@ lawhaa_test_assert_same(
     'Riyadh, 20 kg, 200 SAR',
     array( 'carrier' => 30.0 ),
     lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 20, 200 ) )
+);
+
+lawhaa_test_assert_same(
+    'Riyadh, 18 kg, 352 SAR',
+    array( 'carrier_free' => 0.0 ),
+    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 18, 352 ) )
 );
 
 lawhaa_test_assert_same(
@@ -194,6 +216,17 @@ lawhaa_test_assert_same(
     18.0,
     Lawhaa_Shipping_Rules::carrier_cost( array( 'bad' ), array( 'carrier_extra_step_kg' => 0 ) )
 );
+
+$conflict_files = array(
+    'docs/IMPLEMENTATION-NOTES.md',
+    'includes/class-lawhaa-checkout.php',
+    'includes/class-lawhaa-shipping-rules.php',
+    'tests/rules-smoke.php',
+);
+foreach ( $conflict_files as $conflict_file ) {
+    $contents = file_get_contents( __DIR__ . '/../' . $conflict_file );
+    lawhaa_test_assert_same( $conflict_file . ' has no conflict markers', false, false !== strpos( $contents, str_repeat( '<', 7 ) ) || false !== strpos( $contents, str_repeat( '=', 7 ) ) || false !== strpos( $contents, str_repeat( '>', 7 ) ) );
+}
 
 if ( $failures ) {
     fwrite( STDERR, implode( PHP_EOL, $failures ) . PHP_EOL );
