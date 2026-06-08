@@ -464,9 +464,8 @@ final class Lawhaa_Shipping_Rules {
     }
 
     private static function is_arabic_locale() {
-        if ( function_exists( 'is_rtl' ) && is_rtl() ) {
-            return true;
-        }
+        // Arabic-only: selects the _ar label/estimate companions, so other RTL locales
+        // (Hebrew, Persian, Urdu) must NOT match. Do not reintroduce an is_rtl() branch.
         $locale = function_exists( 'determine_locale' ) ? determine_locale() : get_locale();
         return 0 === strpos( (string) $locale, 'ar' );
     }
