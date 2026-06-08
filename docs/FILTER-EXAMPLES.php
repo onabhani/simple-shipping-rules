@@ -1,6 +1,6 @@
 <?php
 /**
- * Example customizations for Lawhaa Shipping Rules.
+ * Example customizations for Simple Shipping Rule.
  * Put snippets like these in a small site plugin, not in the theme functions.php.
  */
 

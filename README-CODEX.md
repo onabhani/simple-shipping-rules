@@ -1,6 +1,6 @@
-# Lawhaa Shipping Rules — Codex Brief
+# Simple Shipping Rule — Codex Brief
 
-This package contains a companion WooCommerce plugin for Lawhaa shipping rules.
+This package contains a companion WooCommerce plugin for KSA shipping rules.
 
 It is designed to work beside the existing plugin:
 
@@ -12,7 +12,7 @@ Do **not** edit the OTO plugin directly unless you intentionally apply the optio
 
 ## Main goals
 
-1. Generate Lawhaa shipping rates from:
+1. Generate shipping rates from:
    - Saudi National Address city.
    - Saudi National Address district/area.
    - Cart/package weight in kg.
@@ -49,7 +49,7 @@ Do **not** edit the OTO plugin directly unless you intentionally apply the optio
 
 5. Add shipping method:
 
-   `Lawhaa Smart Shipping`
+   `Simple Smart Shipping`
 
 6. Disable overlapping Flat Rate / Free Shipping methods in the same zone unless you intentionally want fallback methods.
 
@@ -185,7 +185,7 @@ This optional patch does two things:
 window.dispatchEvent(new CustomEvent('otoksa:address_validated', { detail: response.data }));
 ```
 
-The Lawhaa plugin already works without this event by forcing delayed checkout refreshes after the National Address shortcode changes. The event makes the integration cleaner and faster.
+This plugin already works without this event by forcing delayed checkout refreshes after the National Address shortcode changes. The event makes the integration cleaner and faster.
 
 ---
 
