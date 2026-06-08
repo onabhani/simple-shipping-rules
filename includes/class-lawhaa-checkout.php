@@ -115,12 +115,23 @@ final class Lawhaa_Checkout {
             return;
         }
 
-        $country = strtoupper( (string) ( WC()->customer->get_shipping_country() ?: WC()->customer->get_billing_country() ) );
-        if ( 'SA' !== $country ) {
+        $customer = WC()->customer;
+        // Validate the shipping destination that rates are actually based on. Read country and
+        // city from the SAME address: shipping when a shipping country is set, otherwise billing.
+        // Never mix a shipping country with a billing city — a separate Saudi shipping address
+        // with an empty city must block even if a billing city is present.
+        if ( '' !== (string) $customer->get_shipping_country() ) {
+            $country = $customer->get_shipping_country();
+            $city    = $customer->get_shipping_city();
+        } else {
+            $country = $customer->get_billing_country();
+            $city    = $customer->get_billing_city();
+        }
+
+        if ( 'SA' !== strtoupper( (string) $country ) ) {
             return;
         }
 
-        $city = WC()->customer->get_shipping_city() ?: WC()->customer->get_billing_city();
         if ( '' === trim( (string) $city ) ) {
             $errors->add(
                 'lawhaa_missing_city',
