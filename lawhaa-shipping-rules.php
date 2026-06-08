@@ -27,8 +27,18 @@ define( 'LAWHAASHIP_URL', plugin_dir_url( __FILE__ ) );
 
 register_activation_hook( __FILE__, static function() {
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-shipping-rules.php';
-    if ( false === get_option( 'lawhaa_shipping_rules_settings', false ) ) {
-        add_option( 'lawhaa_shipping_rules_settings', Lawhaa_Shipping_Rules::default_config() );
+    // The settings array is sizeable and only needed on cart/checkout/admin, so it
+    // is not autoloaded. config() memoizes the single get_option() per request.
+    $existing = get_option( 'lawhaa_shipping_rules_settings', false );
+    if ( false === $existing ) {
+        add_option( 'lawhaa_shipping_rules_settings', Lawhaa_Shipping_Rules::default_config(), '', 'no' );
+    } elseif ( function_exists( 'wp_set_option_autoload' ) ) {
+        // WP 6.4+: flip the autoload column directly (update_option() short-circuits when the value is unchanged).
+        wp_set_option_autoload( 'lawhaa_shipping_rules_settings', false );
+    } else {
+        // Older WP: delete + re-add is the only way to change the autoload flag without a value change.
+        delete_option( 'lawhaa_shipping_rules_settings' );
+        add_option( 'lawhaa_shipping_rules_settings', $existing, '', 'no' );
     }
 } );
 

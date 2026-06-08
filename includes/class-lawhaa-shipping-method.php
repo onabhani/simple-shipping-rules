@@ -68,9 +68,9 @@ class Lawhaa_Shipping_Method extends WC_Shipping_Method {
             $meta    = isset( $rate['meta'] ) && is_array( $rate['meta'] ) ? $rate['meta'] : array();
 
             if ( $this->debug ) {
-                $meta[ __( 'Lawhaa group', 'lawhaa-shipping-rules' ) ]    = isset( $context['group'] ) ? $context['group'] : '';
-                $meta[ __( 'Destination city', 'lawhaa-shipping-rules' ) ] = isset( $context['city'] ) ? $context['city'] : '';
-                $meta[ __( 'Destination area', 'lawhaa-shipping-rules' ) ] = isset( $context['district'] ) ? $context['district'] : '';
+                $meta[ __( 'Lawhaa group', 'lawhaa-shipping-rules' ) ]    = isset( $context['group'] ) ? esc_html( (string) $context['group'] ) : '';
+                $meta[ __( 'Destination city', 'lawhaa-shipping-rules' ) ] = isset( $context['city'] ) ? esc_html( (string) $context['city'] ) : '';
+                $meta[ __( 'Destination area', 'lawhaa-shipping-rules' ) ] = isset( $context['district'] ) ? esc_html( (string) $context['district'] ) : '';
                 $meta[ __( 'Package weight', 'lawhaa-shipping-rules' ) ]   = isset( $context['weight_kg'] ) ? wc_format_decimal( $context['weight_kg'], 2 ) . ' kg' : '';
                 $meta[ __( 'Package amount', 'lawhaa-shipping-rules' ) ]   = isset( $context['amount'] ) ? wc_price( $context['amount'] ) : '';
             }
