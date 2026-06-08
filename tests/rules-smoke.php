@@ -91,105 +91,38 @@ function lawhaa_rate_costs( $rates ) {
     return $costs;
 }
 
-lawhaa_test_assert_same(
-    'Dammam, 5 kg, 200 SAR',
-    array(
-        'center_delivery' => 15.0,
-        'mrsool'          => 38.0,
-        'c4d'             => 29.0,
-        'local_pickup'    => 0.0,
-    ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 5, 200 ) )
+// Rate-cost scenarios: [ label, city, weight_kg, amount, expected code => cost ].
+// Includes the README-CODEX pricing cases plus boundary cases at the expensive
+// thresholds (exactly at / just past mrsool_max_kg, carrier_free_max_kg, heavy_threshold_kg).
+$cost_scenarios = array(
+    array( 'Dammam, 5 kg, 200 SAR', 'Dammam', 5, 200, array( 'center_delivery' => 15.0, 'mrsool' => 38.0, 'c4d' => 29.0, 'local_pickup' => 0.0 ) ),
+    array( 'Qatif, 5 kg, 200 SAR', 'Qatif', 5, 200, array( 'center_delivery' => 25.0, 'mrsool' => 38.0, 'c4d' => 29.0, 'local_pickup' => 0.0 ) ),
+    array( 'Dammam, 5 kg, 350 SAR (center free)', 'Dammam', 5, 350, array( 'center_delivery' => 0.0, 'mrsool' => 38.0, 'c4d' => 29.0, 'local_pickup' => 0.0 ) ),
+    array( 'Riyadh, 20 kg, 200 SAR', 'Riyadh', 20, 200, array( 'carrier' => 30.0 ) ),
+    array( 'Riyadh, 18 kg, 352 SAR (carrier free)', 'Riyadh', 18, 352, array( 'carrier_free' => 0.0 ) ),
+    array( 'Riyadh, 40 kg, 400 SAR (carrier free)', 'Riyadh', 40, 400, array( 'carrier_free' => 0.0 ) ),
+    array( 'Riyadh, 60 kg, 400 SAR', 'Riyadh', 60, 400, array( 'carrier' => 74.0 ) ),
+    array( 'Riyadh, 151 kg (heavy)', 'Riyadh', 151, 400, array( 'heavy_sink' => 307.0 ) ),
+    array( 'Carrier free at exactly carrier_free_max_kg (50)', 'Riyadh', 50, 400, array( 'carrier_free' => 0.0 ) ),
+    array( 'Carrier not free just past carrier_free_max_kg (50.01)', 'Riyadh', 50.01, 400, array( 'carrier' => 63.0 ) ),
+    array( 'Heavy NOT triggered at exactly heavy_threshold_kg (150)', 'Riyadh', 150, 400, array( 'carrier' => 174.0 ) ),
+    array( 'Heavy triggered just past heavy_threshold_kg (150.01)', 'Riyadh', 150.01, 400, array( 'heavy_sink' => 307.0 ) ),
+    array( 'Zero-weight local cart bills fast at first-kg minimum', 'Dammam', 0, 200, array( 'center_delivery' => 15.0, 'mrsool' => 30.0, 'c4d' => 25.0, 'local_pickup' => 0.0 ) ),
 );
+foreach ( $cost_scenarios as $scenario ) {
+    list( $label, $city, $weight, $amount, $expected ) = $scenario;
+    lawhaa_test_assert_same( $label, $expected, lawhaa_rate_costs( lawhaa_rates_for( $city, $weight, $amount ) ) );
+}
 
-lawhaa_test_assert_same(
-    'Qatif, 5 kg, 200 SAR',
-    array(
-        'center_delivery' => 25.0,
-        'mrsool'          => 38.0,
-        'c4d'             => 29.0,
-        'local_pickup'    => 0.0,
-    ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Qatif', 5, 200 ) )
+// Rate-code presence scenarios: [ label, city, weight_kg, amount, expected ordered codes ].
+$code_scenarios = array(
+    array( 'Mrsool/C4D offered at exactly mrsool_max_kg (50)', 'Dammam', 50, 200, array( 'center_delivery', 'mrsool', 'c4d', 'local_pickup' ) ),
+    array( 'Mrsool/C4D dropped just past mrsool_max_kg (50.01)', 'Dammam', 50.01, 200, array( 'center_delivery', 'local_pickup' ) ),
 );
-
-lawhaa_test_assert_same(
-    'Dammam, 5 kg, 350 SAR',
-    array(
-        'center_delivery' => 0.0,
-        'mrsool'          => 38.0,
-        'c4d'             => 29.0,
-        'local_pickup'    => 0.0,
-    ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 5, 350 ) )
-);
-
-lawhaa_test_assert_same(
-    'Riyadh, 20 kg, 200 SAR',
-    array( 'carrier' => 30.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 20, 200 ) )
-);
-
-lawhaa_test_assert_same(
-    'Riyadh, 18 kg, 352 SAR',
-    array( 'carrier_free' => 0.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 18, 352 ) )
-);
-
-lawhaa_test_assert_same(
-    'Riyadh, 40 kg, 400 SAR',
-    array( 'carrier_free' => 0.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 40, 400 ) )
-);
-
-lawhaa_test_assert_same(
-    'Riyadh, 60 kg, 400 SAR',
-    array( 'carrier' => 74.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 60, 400 ) )
-);
-
-lawhaa_test_assert_same(
-    'Any city, 151 kg',
-    array( 'heavy_sink' => 307.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 151, 400 ) )
-);
-
-// Boundary cases at the most expensive thresholds (lock >/<= semantics against off-by-one).
-lawhaa_test_assert_same(
-    'Mrsool/C4D offered at exactly mrsool_max_kg (50)',
-    array( 'center_delivery', 'mrsool', 'c4d', 'local_pickup' ),
-    array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 50, 200 ) ) )
-);
-lawhaa_test_assert_same(
-    'Mrsool/C4D dropped just past mrsool_max_kg (50.01)',
-    array( 'center_delivery', 'local_pickup' ),
-    array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 50.01, 200 ) ) )
-);
-lawhaa_test_assert_same(
-    'Carrier free at exactly carrier_free_max_kg (50, amount >= 350)',
-    array( 'carrier_free' => 0.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 50, 400 ) )
-);
-lawhaa_test_assert_same(
-    'Carrier not free just past carrier_free_max_kg (50.01)',
-    array( 'carrier' => 63.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 50.01, 400 ) )
-);
-lawhaa_test_assert_same(
-    'Heavy NOT triggered at exactly heavy_threshold_kg (150) — ships as carrier',
-    array( 'carrier' => 174.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 150, 400 ) )
-);
-lawhaa_test_assert_same(
-    'Heavy triggered just past heavy_threshold_kg (150.01)',
-    array( 'heavy_sink' => 307.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Riyadh', 150.01, 400 ) )
-);
-lawhaa_test_assert_same(
-    'Zero-weight local cart bills fast methods at first-kg minimum',
-    array( 'center_delivery' => 15.0, 'mrsool' => 30.0, 'c4d' => 25.0, 'local_pickup' => 0.0 ),
-    lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 0, 200 ) )
-);
+foreach ( $code_scenarios as $scenario ) {
+    list( $label, $city, $weight, $amount, $expected ) = $scenario;
+    lawhaa_test_assert_same( $label, $expected, array_keys( lawhaa_rate_costs( lawhaa_rates_for( $city, $weight, $amount ) ) ) );
+}
 
 // Group allowlists (pickup_groups/fast_groups) must still restrict pickup/fast delivery (see docs/FILTER-EXAMPLES.php).
 // config() memoizes per request, so reset the cache whenever the stored option changes mid-test.
