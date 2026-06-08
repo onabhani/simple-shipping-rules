@@ -15,8 +15,8 @@ final class Lawhaa_Settings {
     public function add_menu_page() {
         add_submenu_page(
             'woocommerce',
-            __( 'Lawhaa Shipping Rules', 'lawhaa-shipping-rules' ),
-            __( 'Lawhaa Shipping Rules', 'lawhaa-shipping-rules' ),
+            __( 'Simple Shipping Rule', 'lawhaa-shipping-rules' ),
+            __( 'Simple Shipping Rule', 'lawhaa-shipping-rules' ),
             'manage_woocommerce',
             self::MENU_SLUG,
             array( $this, 'render_page' )
@@ -41,14 +41,14 @@ final class Lawhaa_Settings {
 
     public function render_page() {
         if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_die( esc_html__( 'You do not have permission to manage Lawhaa shipping settings.', 'lawhaa-shipping-rules' ) );
+            wp_die( esc_html__( 'You do not have permission to manage shipping settings.', 'lawhaa-shipping-rules' ) );
         }
 
         $settings = Lawhaa_Shipping_Rules::config();
         ?>
         <div class="wrap lawhaa-settings-wrap">
-            <h1><?php esc_html_e( 'Lawhaa Shipping Rules', 'lawhaa-shipping-rules' ); ?></h1>
-            <p><?php esc_html_e( 'Configure Lawhaa shipping prices, city/district aliases, COD rules, and debug logging without editing PHP files.', 'lawhaa-shipping-rules' ); ?></p>
+            <h1><?php esc_html_e( 'Simple Shipping Rule', 'lawhaa-shipping-rules' ); ?></h1>
+            <p><?php esc_html_e( 'Configure shipping prices, city/district aliases, COD rules, and debug logging without editing PHP files.', 'lawhaa-shipping-rules' ); ?></p>
             <form method="post" action="options.php">
                 <?php settings_fields( self::OPTION_NAME ); ?>
                 <?php $this->render_sections( $settings ); ?>
@@ -68,7 +68,8 @@ final class Lawhaa_Settings {
         $this->number( $settings, 'center_free_min', __( 'Free shipping threshold', 'lawhaa-shipping-rules' ) );
         $this->text( $settings, 'center_label_en', __( 'Delivery label English', 'lawhaa-shipping-rules' ) );
         $this->text( $settings, 'center_label_ar', __( 'Delivery label Arabic', 'lawhaa-shipping-rules' ) );
-        $this->text( $settings, 'center_delivery_estimate', __( 'Delivery estimate', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, 'center_delivery_estimate', __( 'Delivery estimate (English/default)', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, 'center_delivery_estimate_ar', __( 'Delivery estimate (Arabic)', 'lawhaa-shipping-rules' ) );
         $this->checkbox( $settings, 'center_cod_allowed', __( 'COD allowed', 'lawhaa-shipping-rules' ) );
         $this->number( $settings, 'center_cod_fee', __( 'COD fee', 'lawhaa-shipping-rules' ) );
         $this->section_close();
@@ -96,7 +97,8 @@ final class Lawhaa_Settings {
         $this->number( $settings, 'carrier_free_max_kg', __( 'Free shipping max weight (kg)', 'lawhaa-shipping-rules' ) );
         $this->checkbox( $settings, 'carrier_cod_allowed', __( 'COD allowed', 'lawhaa-shipping-rules' ) );
         $this->number( $settings, 'cod_carrier_fee', __( 'COD fee', 'lawhaa-shipping-rules' ) );
-        $this->text( $settings, 'carrier_delivery_estimate', __( 'Delivery estimate', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, 'carrier_delivery_estimate', __( 'Delivery estimate (English/default)', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, 'carrier_delivery_estimate_ar', __( 'Delivery estimate (Arabic)', 'lawhaa-shipping-rules' ) );
         $this->section_close();
 
         $this->section_open( __( 'Heavy / Sink Shipping', 'lawhaa-shipping-rules' ) );
@@ -106,7 +108,8 @@ final class Lawhaa_Settings {
         $this->number( $settings, 'heavy_first_10kg', __( 'First block price', 'lawhaa-shipping-rules' ) );
         $this->number( $settings, 'heavy_extra_per_kg', __( 'Additional kg price', 'lawhaa-shipping-rules' ) );
         $this->checkbox( $settings, 'heavy_cod_allowed', __( 'COD allowed', 'lawhaa-shipping-rules' ) );
-        $this->text( $settings, 'heavy_delivery_estimate', __( 'Delivery estimate', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, 'heavy_delivery_estimate', __( 'Delivery estimate (English/default)', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, 'heavy_delivery_estimate_ar', __( 'Delivery estimate (Arabic)', 'lawhaa-shipping-rules' ) );
         $this->section_close();
 
         $this->section_open( __( 'Debug / Compatibility', 'lawhaa-shipping-rules' ) );
@@ -121,7 +124,8 @@ final class Lawhaa_Settings {
         $this->number( $settings, $prefix . '_max_kg', __( 'Max weight (kg)', 'lawhaa-shipping-rules' ) );
         $this->number( $settings, $prefix . '_first_kg', __( 'First kg price', 'lawhaa-shipping-rules' ) );
         $this->number( $settings, $prefix . '_extra_per_kg', __( 'Additional kg price', 'lawhaa-shipping-rules' ) );
-        $this->text( $settings, $prefix . '_delivery_estimate', __( 'Delivery estimate', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, $prefix . '_delivery_estimate', __( 'Delivery estimate (English/default)', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, $prefix . '_delivery_estimate_ar', __( 'Delivery estimate (Arabic)', 'lawhaa-shipping-rules' ) );
         $this->checkbox( $settings, $prefix . '_cod_allowed', __( 'COD allowed', 'lawhaa-shipping-rules' ) );
         $this->section_close();
     }

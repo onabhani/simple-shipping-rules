@@ -40,7 +40,11 @@ function get_option( $name, $default = false ) { // phpcs:ignore WordPress.Namin
 }
 
 function get_locale() { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
-    return 'en_US';
+    return isset( $GLOBALS['lawhaa_test_locale'] ) ? $GLOBALS['lawhaa_test_locale'] : 'en_US';
+}
+
+function determine_locale() { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
+    return get_locale();
 }
 
 function wc_format_decimal( $number, $dp = false ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
@@ -89,6 +93,15 @@ function lawhaa_rate_costs( $rates ) {
         $costs[ $rate['code'] ] = (float) $rate['cost'];
     }
     return $costs;
+}
+
+function lawhaa_rate_label( $rates, $code ) {
+    foreach ( $rates as $rate ) {
+        if ( $rate['code'] === $code ) {
+            return (string) $rate['label'];
+        }
+    }
+    return '';
 }
 
 // Rate-cost scenarios: [ label, city, weight_kg, amount, expected code => cost ].
@@ -143,6 +156,20 @@ lawhaa_test_assert_same(
 );
 unset( $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] );
 Lawhaa_Shipping_Rules::reset_cache();
+
+// Delivery estimates are localized: the English/default value on en, the *_ar companion on ar.
+lawhaa_test_assert_same(
+    'English locale shows the default delivery estimate',
+    true,
+    false !== strpos( lawhaa_rate_label( lawhaa_rates_for( 'Dammam', 5, 200 ), 'mrsool' ), '2-4 hours' )
+);
+$GLOBALS['lawhaa_test_locale'] = 'ar';
+lawhaa_test_assert_same(
+    'Arabic locale shows the Arabic delivery estimate',
+    true,
+    false !== strpos( lawhaa_rate_label( lawhaa_rates_for( 'Dammam', 5, 200 ), 'mrsool' ), 'خلال 2-4 ساعات' )
+);
+unset( $GLOBALS['lawhaa_test_locale'] );
 
 lawhaa_test_assert_same( 'COD allowed for center', true, Lawhaa_Shipping_Rules::cod_allowed_for_rate( 'center_delivery' ) );
 lawhaa_test_assert_same( 'COD blocked for Mrsool', false, Lawhaa_Shipping_Rules::cod_allowed_for_rate( 'mrsool' ) );

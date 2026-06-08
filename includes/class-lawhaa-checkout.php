@@ -9,6 +9,8 @@ final class Lawhaa_Checkout {
         add_action( 'woocommerce_cart_calculate_fees', array( $this, 'maybe_add_cod_fee' ), 30 );
         add_action( 'woocommerce_checkout_create_order', array( $this, 'save_order_rule_meta' ), 20, 2 );
         add_action( 'woocommerce_checkout_process', array( $this, 'validate_checkout_destination' ) );
+        // Block (Store API) checkout equivalent of the classic woocommerce_checkout_process guard.
+        add_action( 'woocommerce_store_api_cart_errors', array( $this, 'validate_store_api_destination' ), 10, 2 );
         add_filter( 'woocommerce_package_rates', array( $this, 'filter_conflicting_rates' ), 50, 2 );
         add_filter( 'woocommerce_shipping_calculator_enable_postcode', '__return_false' );
         add_filter( 'woocommerce_default_address_fields', array( $this, 'make_postcode_optional' ) );
@@ -99,6 +101,33 @@ final class Lawhaa_Checkout {
         }
     }
 
+
+    /**
+     * Block checkout (Store API) destination guard. Mirrors validate_checkout_destination():
+     * a Saudi order must carry a city so shipping can be calculated. Adds to the cart error
+     * bag, which the Store API surfaces and which blocks order placement.
+     *
+     * @param WP_Error $errors
+     * @param WC_Cart  $cart
+     */
+    public function validate_store_api_destination( $errors, $cart ) {
+        if ( ! is_wp_error( $errors ) || ! $cart || ! $cart->needs_shipping() || ! WC()->customer ) {
+            return;
+        }
+
+        $country = strtoupper( (string) ( WC()->customer->get_shipping_country() ?: WC()->customer->get_billing_country() ) );
+        if ( 'SA' !== $country ) {
+            return;
+        }
+
+        $city = WC()->customer->get_shipping_city() ?: WC()->customer->get_billing_city();
+        if ( '' === trim( (string) $city ) ) {
+            $errors->add(
+                'lawhaa_missing_city',
+                __( 'Please enter or validate the National Address so the city can be used to calculate shipping.', 'lawhaa-shipping-rules' )
+            );
+        }
+    }
 
     private static function posted_value( $key ) {
         // WooCommerce validates the checkout nonce before running woocommerce_checkout_process.

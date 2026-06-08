@@ -90,9 +90,6 @@ final class Lawhaa_Shipping_Rules {
             $config['heavy_first_block_kg'] = $defaults['heavy_first_block_kg'];
         }
 
-        // Backward-compatible aliases expected by older filters/examples.
-        $config['fast_max_kg'] = max( (float) $config['mrsool_max_kg'], (float) $config['c4d_max_kg'] );
-
         return $config;
     }
 
@@ -108,6 +105,7 @@ final class Lawhaa_Shipping_Rules {
             'center_label_en'           => 'Center delivery',
             'center_label_ar'           => 'توصيل المركز',
             'center_delivery_estimate'  => '24-48 hours',
+            'center_delivery_estimate_ar' => 'خلال 24-48 ساعة',
             'center_cod_allowed'        => 'yes',
             'center_cod_fee'            => 0.0,
             'local_15_aliases'          => "Dammam\nالدمام\nدمام\nSaihat\nSayhat\nSihat\nسيهات",
@@ -118,6 +116,7 @@ final class Lawhaa_Shipping_Rules {
             'mrsool_first_kg'           => 30.0,
             'mrsool_extra_per_kg'       => 2.0,
             'mrsool_delivery_estimate'  => '2-4 hours',
+            'mrsool_delivery_estimate_ar' => 'خلال 2-4 ساعات',
             'mrsool_cod_allowed'        => 'no',
             'mrsool_aliases'            => "Dammam\nالدمام\nدمام\nSaihat\nSayhat\nSihat\nسيهات\nQatif\nQateef\nالقطيف\nقطيف\nKhobar\nAl Khobar\nالخبر\nخبر\nTarout\nTarut\nTaroot\nتاروت\nAziziyah\nAzizia\nAziziah\nالعزيزية\nالعزيزيه\nعزيزية\nAl Iskan Dist\nحي الإسكان\nالاسكان\nالإسكان",
 
@@ -126,9 +125,9 @@ final class Lawhaa_Shipping_Rules {
             'c4d_first_kg'              => 25.0,
             'c4d_extra_per_kg'          => 1.0,
             'c4d_delivery_estimate'     => '2-4 hours',
+            'c4d_delivery_estimate_ar'  => 'خلال 2-4 ساعات',
             'c4d_cod_allowed'           => 'no',
             'c4d_aliases'               => "Dammam\nالدمام\nدمام\nSaihat\nSayhat\nSihat\nسيهات\nQatif\nQateef\nالقطيف\nقطيف\nKhobar\nAl Khobar\nالخبر\nخبر\nTarout\nTarut\nTaroot\nتاروت\nAziziyah\nAzizia\nAziziah\nالعزيزية\nالعزيزيه\nعزيزية\nAl Iskan Dist\nحي الإسكان\nالاسكان\nالإسكان",
-            'fast_aliases'              => "Dammam\nالدمام\nدمام\nSaihat\nSayhat\nSihat\nسيهات\nQatif\nQateef\nالقطيف\nقطيف\nKhobar\nAl Khobar\nالخبر\nخبر\nTarout\nTarut\nTaroot\nتاروت\nAziziyah\nAzizia\nAziziah\nالعزيزية\nالعزيزيه\nعزيزية\nAl Iskan Dist\nحي الإسكان\nالاسكان\nالإسكان",
 
             'pickup_enabled'            => 'yes',
             'pickup_cost'               => 0.0,
@@ -148,6 +147,7 @@ final class Lawhaa_Shipping_Rules {
             'carrier_cod_allowed'       => 'yes',
             'cod_carrier_fee'           => 15.0,
             'carrier_delivery_estimate' => '1-5 business days',
+            'carrier_delivery_estimate_ar' => 'خلال 1-5 أيام عمل',
 
             'heavy_enabled'             => 'yes',
             'heavy_threshold_kg'        => 150.0,
@@ -156,9 +156,10 @@ final class Lawhaa_Shipping_Rules {
             'heavy_extra_per_kg'        => 2.0,
             'heavy_cod_allowed'         => 'no',
             'heavy_delivery_estimate'   => '1-5 business days',
+            'heavy_delivery_estimate_ar' => 'خلال 1-5 أيام عمل',
 
-            // Backward-compatible defaults retained for existing filters/examples.
-            'fast_max_kg'               => 50.0,
+            // Coarse region gate for pickup/fast delivery. Filter-only (see docs/FILTER-EXAMPLES.php);
+            // per-method alias lists provide the fine-grained per-carrier coverage.
             'pickup_groups'             => array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ),
             'fast_groups'               => array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ),
         );
@@ -187,7 +188,7 @@ final class Lawhaa_Shipping_Rules {
     }
 
     private static function is_alias_key( $key ) {
-        return in_array( $key, array( 'local_15_aliases', 'local_25_aliases', 'fast_aliases', 'mrsool_aliases', 'c4d_aliases', 'pickup_aliases' ), true );
+        return in_array( $key, array( 'local_15_aliases', 'local_25_aliases', 'mrsool_aliases', 'c4d_aliases', 'pickup_aliases' ), true );
     }
 
     private static function is_numeric_config_key( $key ) {
@@ -217,7 +218,6 @@ final class Lawhaa_Shipping_Rules {
                 'heavy_first_block_kg',
                 'heavy_first_10kg',
                 'heavy_extra_per_kg',
-                'fast_max_kg',
             ),
             true
         );
@@ -266,7 +266,7 @@ final class Lawhaa_Shipping_Rules {
         }
 
         $group = sanitize_key( (string) $group );
-        if ( in_array( $group, array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25, self::GROUP_CARRIER, self::GROUP_UNKNOWN, 'fast_local', 'mrsool', 'c4d', 'pickup', 'heavy' ), true ) ) {
+        if ( in_array( $group, array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25, self::GROUP_CARRIER, self::GROUP_UNKNOWN, 'mrsool', 'c4d', 'pickup' ), true ) ) {
             return $group;
         }
 
@@ -413,7 +413,6 @@ final class Lawhaa_Shipping_Rules {
         $aliases = array(
             self::GROUP_LOCAL_15 => self::alias_lines( $config['local_15_aliases'] ),
             self::GROUP_LOCAL_25 => self::alias_lines( $config['local_25_aliases'] ),
-            'fast_local'         => self::alias_lines( $config['fast_aliases'] ),
             'mrsool'             => self::alias_lines( $config['mrsool_aliases'] ),
             'c4d'                => self::alias_lines( $config['c4d_aliases'] ),
             'pickup'             => self::alias_lines( $config['pickup_aliases'] ),
@@ -430,7 +429,7 @@ final class Lawhaa_Shipping_Rules {
             return self::$aliases_cache;
         }
 
-        foreach ( array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25, 'fast_local', 'mrsool', 'c4d', 'pickup' ) as $group ) {
+        foreach ( array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25, 'mrsool', 'c4d', 'pickup' ) as $group ) {
             $items = isset( $filtered[ $group ] ) ? (array) $filtered[ $group ] : array();
             $filtered[ $group ] = self::normalize_alias_list( $items );
         }
@@ -464,12 +463,31 @@ final class Lawhaa_Shipping_Rules {
         return in_array( $city_key, $aliases[ $group ], true ) || in_array( $district_key, $aliases[ $group ], true );
     }
 
-    private static function setting_label( $config, $base_key, $fallback ) {
+    private static function is_arabic_locale() {
+        if ( function_exists( 'is_rtl' ) && is_rtl() ) {
+            return true;
+        }
         $locale = function_exists( 'determine_locale' ) ? determine_locale() : get_locale();
-        $suffix = ( 0 === strpos( (string) $locale, 'ar' ) || ( function_exists( 'is_rtl' ) && is_rtl() ) ) ? '_ar' : '_en';
-        $key    = $base_key . $suffix;
+        return 0 === strpos( (string) $locale, 'ar' );
+    }
+
+    private static function setting_label( $config, $base_key, $fallback ) {
+        $key = $base_key . ( self::is_arabic_locale() ? '_ar' : '_en' );
 
         return ! empty( $config[ $key ] ) ? $config[ $key ] : $fallback;
+    }
+
+    /**
+     * Delivery estimate localized to the storefront language. The base key holds the
+     * default/English value; an optional "<base>_ar" companion overrides it for Arabic.
+     */
+    private static function localized_estimate( $config, $base_key ) {
+        $ar_key = $base_key . '_ar';
+        if ( self::is_arabic_locale() && ! empty( $config[ $ar_key ] ) ) {
+            return $config[ $ar_key ];
+        }
+
+        return isset( $config[ $base_key ] ) ? $config[ $base_key ] : '';
     }
 
     private static function label_with_estimate( $label, $estimate, $free = false ) {
@@ -477,7 +495,8 @@ final class Lawhaa_Shipping_Rules {
             $label = sprintf( __( '%s - free', 'lawhaa-shipping-rules' ), $label );
         }
 
-        return $estimate ? sprintf( '%1$s (%2$s)', $label, $estimate ) : $label;
+        /* translators: 1: shipping label, 2: delivery time estimate. */
+        return $estimate ? sprintf( __( '%1$s (%2$s)', 'lawhaa-shipping-rules' ), $label, $estimate ) : $label;
     }
 
     public static function city_group( $city, $district = '' ) {
@@ -520,8 +539,10 @@ final class Lawhaa_Shipping_Rules {
             return apply_filters( 'lawhaa_shipping_rates', $rates, $context, $config );
         }
 
+        // Heavy/sink applies strictly ABOVE the threshold: a cart at exactly heavy_threshold_kg
+        // ships as a normal carrier parcel (matches "orders above N kg" in the rules doc).
         if ( 'yes' === $config['heavy_enabled'] && $weight_kg > (float) $config['heavy_threshold_kg'] ) {
-            $estimate = $config['heavy_delivery_estimate'];
+            $estimate = self::localized_estimate( $config, 'heavy_delivery_estimate' );
             $rates[]  = array(
                 'code'        => 'heavy_sink',
                 'label'       => self::label_with_estimate( __( 'Heavy sink shipping', 'lawhaa-shipping-rules' ), $estimate ),
@@ -542,7 +563,7 @@ final class Lawhaa_Shipping_Rules {
             if ( 'yes' === $config['center_enabled'] ) {
                 $center_cost = ( self::GROUP_LOCAL_15 === $group ) ? (float) $config['center_local_15_cost'] : (float) $config['center_local_25_cost'];
                 $center_free = $amount >= (float) $config['center_free_min'];
-                $estimate    = $config['center_delivery_estimate'];
+                $estimate    = self::localized_estimate( $config, 'center_delivery_estimate' );
                 $label       = self::setting_label( $config, 'center_label', __( 'Center delivery', 'lawhaa-shipping-rules' ) );
 
                 $rates[] = array(
@@ -561,10 +582,10 @@ final class Lawhaa_Shipping_Rules {
 
             $fast_groups    = isset( $config['fast_groups'] ) ? (array) $config['fast_groups'] : array();
             $fast_group_ok  = in_array( $group, $fast_groups, true );
-            $mrsool_allowed = $fast_group_ok && ( self::matches_alias_group( 'mrsool', $city, $district ) || self::matches_alias_group( 'fast_local', $city, $district ) );
-            $c4d_allowed    = $fast_group_ok && ( self::matches_alias_group( 'c4d', $city, $district ) || self::matches_alias_group( 'fast_local', $city, $district ) );
+            $mrsool_allowed = $fast_group_ok && self::matches_alias_group( 'mrsool', $city, $district );
+            $c4d_allowed    = $fast_group_ok && self::matches_alias_group( 'c4d', $city, $district );
             if ( 'yes' === $config['mrsool_enabled'] && $mrsool_allowed && $weight_kg <= (float) $config['mrsool_max_kg'] ) {
-                $estimate = $config['mrsool_delivery_estimate'];
+                $estimate = self::localized_estimate( $config, 'mrsool_delivery_estimate' );
                 $rates[]  = array(
                     'code'        => 'mrsool',
                     'label'       => self::label_with_estimate( __( 'Fast shipping - Mrsool', 'lawhaa-shipping-rules' ), $estimate ),
@@ -580,7 +601,7 @@ final class Lawhaa_Shipping_Rules {
             }
 
             if ( 'yes' === $config['c4d_enabled'] && $c4d_allowed && $weight_kg <= (float) $config['c4d_max_kg'] ) {
-                $estimate = $config['c4d_delivery_estimate'];
+                $estimate = self::localized_estimate( $config, 'c4d_delivery_estimate' );
                 $rates[]  = array(
                     'code'        => 'c4d',
                     'label'       => self::label_with_estimate( __( 'Fast shipping - C4D', 'lawhaa-shipping-rules' ), $estimate ),
@@ -618,7 +639,7 @@ final class Lawhaa_Shipping_Rules {
 
         if ( 'yes' === $config['carrier_enabled'] ) {
             $carrier_free = ( $amount >= (float) $config['carrier_free_min'] && $weight_kg <= (float) $config['carrier_free_max_kg'] );
-            $estimate     = $config['carrier_delivery_estimate'];
+            $estimate     = self::localized_estimate( $config, 'carrier_delivery_estimate' );
 
             $rates[] = array(
                 'code'        => $carrier_free ? 'carrier_free' : 'carrier',

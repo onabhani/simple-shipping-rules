@@ -1,10 +1,10 @@
 <?php
 /**
- * Plugin Name:       Lawhaa Shipping Rules
- * Plugin URI:        https://lawhaa.com/
- * Description:       Smart WooCommerce shipping rules for Lawhaa: local delivery, Mrsool, C4D, carriers, heavy sink shipping, COD restrictions, and KSA National Address compatibility.
+ * Plugin Name:       Simple Shipping Rule
+ * Plugin URI:        https://hdqah.com/
+ * Description:       Smart WooCommerce shipping rules for KSA: local delivery, Mrsool, C4D, carriers, heavy sink shipping, COD restrictions, and KSA National Address compatibility.
  * Version:           0.1.0
- * Author:            Lawhaa / HDQAH
+ * Author:            hdqah.com
  * Author URI:        https://hdqah.com/
  * Text Domain:       lawhaa-shipping-rules
  * Domain Path:       /languages
@@ -45,6 +45,10 @@ register_activation_hook( __FILE__, static function() {
 add_action( 'before_woocommerce_init', static function() {
     if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
         \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+        // Shipping rates come from a WC_Shipping_Method and COD logic uses Store-API-compatible
+        // hooks (woocommerce_available_payment_gateways, woocommerce_cart_calculate_fees), so the
+        // plugin works with the Cart/Checkout Blocks.
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
     }
 } );
 
@@ -53,7 +57,7 @@ add_action( 'plugins_loaded', static function() {
 
     if ( ! class_exists( 'WooCommerce' ) ) {
         add_action( 'admin_notices', static function() {
-            echo '<div class="notice notice-error"><p>' . esc_html__( 'Lawhaa Shipping Rules requires WooCommerce to be active.', 'lawhaa-shipping-rules' ) . '</p></div>';
+            echo '<div class="notice notice-error"><p>' . esc_html__( 'Simple Shipping Rule requires WooCommerce to be active.', 'lawhaa-shipping-rules' ) . '</p></div>';
         } );
         return;
     }
