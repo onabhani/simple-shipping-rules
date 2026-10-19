@@ -12,6 +12,7 @@ final class Lawhaa_Checkout {
         // Block (Store API) checkout equivalent of the classic woocommerce_checkout_process guard.
         add_action( 'woocommerce_store_api_cart_errors', array( $this, 'validate_store_api_destination' ), 10, 2 );
         add_filter( 'woocommerce_package_rates', array( $this, 'filter_conflicting_rates' ), 50, 2 );
+        add_filter( 'woocommerce_webhook_should_deliver', array( $this, 'filter_oto_webhook' ), 20, 3 );
         add_filter( 'woocommerce_shipping_calculator_enable_postcode', '__return_false' );
         add_filter( 'woocommerce_default_address_fields', array( $this, 'make_postcode_optional' ) );
     }
@@ -181,6 +182,26 @@ final class Lawhaa_Checkout {
         $order->update_meta_data( '_lawhaa_destination_district', $district );
         $order->update_meta_data( '_lawhaa_shipping_group', $group );
         $order->update_meta_data( '_lawhaa_package_weight_kg', Lawhaa_Shipping_Rules::package_weight_kg( array( 'contents' => WC()->cart ? WC()->cart->get_cart() : array() ) ) );
+    }
+
+    /**
+     * Keep local delivery orders (center, fast, pickup by default) out of OTO's order webhooks.
+     */
+    public function filter_oto_webhook( $should_deliver, $webhook, $arg ) {
+        if ( ! $should_deliver || ! $webhook instanceof WC_Webhook || 'order' !== $webhook->get_resource() ) {
+            return $should_deliver;
+        }
+
+        $order = is_numeric( $arg ) ? wc_get_order( absint( $arg ) ) : null;
+        if ( ! $order instanceof WC_Order ) {
+            return $should_deliver;
+        }
+
+        if ( Lawhaa_Shipping_Rules::blocks_oto_delivery( $webhook->get_delivery_url(), $order->get_meta( '_lawhaa_shipping_rate_family' ) ) ) {
+            return false;
+        }
+
+        return $should_deliver;
     }
 
     /**
