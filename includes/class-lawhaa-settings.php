@@ -112,6 +112,11 @@ final class Lawhaa_Settings {
         $this->text( $settings, 'heavy_delivery_estimate_ar', __( 'Delivery estimate (Arabic)', 'lawhaa-shipping-rules' ) );
         $this->section_close();
 
+        $this->section_open( __( 'OTO', 'lawhaa-shipping-rules' ) );
+        $this->family_checkboxes( $settings, 'oto_excluded_families', __( 'Do not send these delivery types to OTO', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, 'oto_webhook_match', __( 'OTO webhook URL contains', 'lawhaa-shipping-rules' ) );
+        $this->section_close();
+
         $this->section_open( __( 'Debug / Compatibility', 'lawhaa-shipping-rules' ) );
         $this->checkbox( $settings, 'debug_enabled', __( 'Enable WooCommerce debug logging', 'lawhaa-shipping-rules' ) );
         $this->section_close();
@@ -149,6 +154,34 @@ final class Lawhaa_Settings {
             $this->field_name( $key ),
             checked( ! empty( $settings[ $key ] ) && 'yes' === $settings[ $key ], true, false ),
             esc_html__( 'Enabled', 'lawhaa-shipping-rules' )
+        );
+    }
+
+    private function family_checkboxes( $settings, $key, $label ) {
+        $labels   = array(
+            'center'  => __( 'Center delivery', 'lawhaa-shipping-rules' ),
+            'fast'    => __( 'Fast delivery (MRSOOL / C4D)', 'lawhaa-shipping-rules' ),
+            'pickup'  => __( 'Local pickup', 'lawhaa-shipping-rules' ),
+            'carrier' => __( 'Carrier shipping', 'lawhaa-shipping-rules' ),
+            'heavy'   => __( 'Heavy / sink shipping', 'lawhaa-shipping-rules' ),
+        );
+        $selected = isset( $settings[ $key ] ) ? (array) $settings[ $key ] : array();
+        $boxes    = '';
+        foreach ( Lawhaa_Shipping_Rules::rate_families() as $family ) {
+            $boxes .= sprintf(
+                '<label style="display:block"><input type="checkbox" name="%1$s[]" value="%2$s" %3$s> %4$s</label>',
+                $this->field_name( $key ),
+                esc_attr( $family ),
+                checked( in_array( $family, $selected, true ), true, false ),
+                esc_html( isset( $labels[ $family ] ) ? $labels[ $family ] : $family )
+            );
+        }
+
+        printf(
+            '<tr><th scope="row">%1$s</th><td><input type="hidden" name="%2$s[]" value="">%3$s</td></tr>',
+            esc_html( $label ),
+            $this->field_name( $key ),
+            $boxes
         );
     }
 

@@ -50,6 +50,18 @@ final class Lawhaa_Shipping_Rules {
         $config   = array_merge( $defaults, $config );
 
         foreach ( $defaults as $key => $default ) {
+            if ( 'oto_excluded_families' === $key ) {
+                $families = array();
+                foreach ( (array) $config[ $key ] as $family ) {
+                    $family = is_scalar( $family ) ? sanitize_key( (string) $family ) : '';
+                    if ( in_array( $family, self::rate_families(), true ) ) {
+                        $families[] = $family;
+                    }
+                }
+                $config[ $key ] = array_values( array_unique( $families ) );
+                continue;
+            }
+
             if ( is_array( $default ) ) {
                 $groups = array();
                 foreach ( (array) $config[ $key ] as $group ) {
@@ -162,6 +174,11 @@ final class Lawhaa_Shipping_Rules {
             // per-method alias lists provide the fine-grained per-carrier coverage.
             'pickup_groups'             => array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ),
             'fast_groups'               => array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ),
+
+            // Orders whose rate family is listed here are not sent to webhooks whose
+            // delivery URL contains oto_webhook_match (OTO registers its own WC webhooks).
+            'oto_excluded_families'     => array( 'center', 'fast', 'pickup' ),
+            'oto_webhook_match'         => 'oto-webhook-listener',
         );
     }
 
@@ -716,6 +733,26 @@ final class Lawhaa_Shipping_Rules {
             'heavy_sink'      => 'heavy',
         );
         return isset( $map[ $code ] ) ? $map[ $code ] : '';
+    }
+
+    public static function rate_families() {
+        return array( 'center', 'fast', 'pickup', 'carrier', 'heavy' );
+    }
+
+    /**
+     * Whether a webhook delivery should be blocked because the order's rate family
+     * is excluded from OTO. Orders without a family (manual/admin orders) are not blocked.
+     */
+    public static function blocks_oto_delivery( $delivery_url, $family ) {
+        $config = self::config();
+        $match  = isset( $config['oto_webhook_match'] ) ? trim( (string) $config['oto_webhook_match'] ) : '';
+        $family = is_scalar( $family ) ? sanitize_key( (string) $family ) : '';
+
+        if ( '' === $match || '' === $family || ! is_scalar( $delivery_url ) || false === strpos( (string) $delivery_url, $match ) ) {
+            return false;
+        }
+
+        return in_array( $family, (array) $config['oto_excluded_families'], true );
     }
 
     public static function cod_allowed_for_rate( $code ) {

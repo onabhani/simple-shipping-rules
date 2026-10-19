@@ -237,6 +237,29 @@ lawhaa_test_assert_same(
     Lawhaa_Shipping_Rules::carrier_cost( array( 'bad' ), array( 'carrier_extra_step_kg' => 0 ) )
 );
 
+$oto_url = 'https://oto-webhook-listener-znlfrydhea-ew.a.run.app/salesChannel/wooCommerce/abc';
+$GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] = array();
+Lawhaa_Shipping_Rules::reset_cache();
+lawhaa_test_assert_same( 'OTO: center delivery is blocked by default', true, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'center' ) );
+lawhaa_test_assert_same( 'OTO: fast delivery is blocked by default', true, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'fast' ) );
+lawhaa_test_assert_same( 'OTO: pickup is blocked by default', true, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'pickup' ) );
+lawhaa_test_assert_same( 'OTO: carrier is sent', false, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'carrier' ) );
+lawhaa_test_assert_same( 'OTO: heavy is sent by default', false, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'heavy' ) );
+lawhaa_test_assert_same( 'OTO: order without family is sent', false, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, '' ) );
+lawhaa_test_assert_same( 'OTO: other webhooks are untouched', false, Lawhaa_Shipping_Rules::blocks_oto_delivery( 'https://odoo.example.com/hook', 'center' ) );
+
+$GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] = array( 'oto_excluded_families' => array( '', 'heavy', 'bogus' ) );
+Lawhaa_Shipping_Rules::reset_cache();
+lawhaa_test_assert_same( 'OTO: saved families are sanitized', array( 'heavy' ), Lawhaa_Shipping_Rules::config()['oto_excluded_families'] );
+lawhaa_test_assert_same( 'OTO: saved list replaces defaults', false, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'center' ) );
+lawhaa_test_assert_same( 'OTO: saved heavy is blocked', true, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'heavy' ) );
+
+$GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] = array( 'oto_webhook_match' => '' );
+Lawhaa_Shipping_Rules::reset_cache();
+lawhaa_test_assert_same( 'OTO: empty URL match disables blocking', false, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'center' ) );
+unset( $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] );
+Lawhaa_Shipping_Rules::reset_cache();
+
 $conflict_files = array(
     'docs/IMPLEMENTATION-NOTES.md',
     'includes/class-lawhaa-checkout.php',
