@@ -16,6 +16,66 @@ final class Lawhaa_Checkout {
         add_filter( 'woocommerce_shipping_calculator_enable_postcode', '__return_false' );
         add_filter( 'woocommerce_default_address_fields', array( $this, 'make_postcode_optional' ) );
         add_filter( 'woocommerce_cart_shipping_method_full_label', array( $this, 'show_zero_cost' ), 10, 2 );
+        add_action( 'woocommerce_checkout_update_order_review', array( $this, 'remember_short_code' ) );
+        add_filter( 'woocommerce_cart_shipping_packages', array( $this, 'add_short_code_to_packages' ) );
+    }
+
+    /**
+     * Checkout fields holding the national address short code (billing, then "ship to a different address").
+     */
+    private static function short_code_fields() {
+        return apply_filters(
+            'lawhaa_shipping_short_code_fields',
+            array(
+                'billing'  => 'ksa_national_address_shortcode',
+                'shipping' => 'shipping_national_address_shortcode',
+            )
+        );
+    }
+
+    /**
+     * Pick the destination short code from posted checkout fields.
+     */
+    private static function short_code_from_fields( $fields ) {
+        $keys     = self::short_code_fields();
+        $billing  = isset( $keys['billing'], $fields[ $keys['billing'] ] ) ? Lawhaa_Shipping_Rules::sanitize_short_code( $fields[ $keys['billing'] ] ) : '';
+        $shipping = isset( $keys['shipping'], $fields[ $keys['shipping'] ] ) ? Lawhaa_Shipping_Rules::sanitize_short_code( $fields[ $keys['shipping'] ] ) : '';
+
+        return ! empty( $fields['ship_to_different_address'] ) && '' !== $shipping ? $shipping : $billing;
+    }
+
+    /**
+     * The checkout form refresh posts the whole form as post_data; keep the short code in the session.
+     */
+    public function remember_short_code( $post_data ) {
+        if ( ! WC()->session || ! is_string( $post_data ) ) {
+            return;
+        }
+
+        parse_str( $post_data, $fields );
+        WC()->session->set( 'lawhaa_short_code', self::short_code_from_fields( is_array( $fields ) ? wp_unslash( $fields ) : array() ) );
+    }
+
+    public static function current_short_code() {
+        $keys = self::short_code_fields();
+        // WooCommerce verifies the checkout nonce before calculating totals for the order.
+        if ( isset( $keys['billing'], $_POST[ $keys['billing'] ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            return self::short_code_from_fields( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        }
+
+        return WC()->session ? Lawhaa_Shipping_Rules::sanitize_short_code( WC()->session->get( 'lawhaa_short_code' ) ) : '';
+    }
+
+    /**
+     * Carry the short code in each package so it drives the distance and the rate cache hash.
+     */
+    public function add_short_code_to_packages( $packages ) {
+        $code = self::current_short_code();
+        foreach ( $packages as $index => $package ) {
+            $packages[ $index ]['lawhaa_short_code'] = $code;
+        }
+
+        return $packages;
     }
 
     /**
@@ -197,6 +257,14 @@ final class Lawhaa_Checkout {
         $order->update_meta_data( '_lawhaa_destination_district', $district );
         $order->update_meta_data( '_lawhaa_shipping_group', $group );
         $order->update_meta_data( '_lawhaa_package_weight_kg', Lawhaa_Shipping_Rules::package_weight_kg( array( 'contents' => WC()->cart ? WC()->cart->get_cart() : array() ) ) );
+
+        if ( Lawhaa_Shipping_Rules::is_local_group( $group ) ) {
+            $distance = Lawhaa_Shipping_Rules::destination_distance( self::current_short_code(), $city );
+            if ( null !== $distance['km'] ) {
+                $order->update_meta_data( '_lawhaa_distance_km', $distance['km'] );
+                $order->update_meta_data( '_lawhaa_distance_source', $distance['source'] );
+            }
+        }
     }
 
     /**
@@ -212,7 +280,13 @@ final class Lawhaa_Checkout {
             return $should_deliver;
         }
 
-        if ( Lawhaa_Shipping_Rules::blocks_oto_delivery( $webhook->get_delivery_url(), $order->get_meta( '_lawhaa_shipping_rate_family' ) ) ) {
+        // Derive the family from the rate code so orders saved before Mrsool got its own family follow the current mapping.
+        $family = Lawhaa_Shipping_Rules::rate_family( $order->get_meta( '_lawhaa_shipping_rate_code' ) );
+        if ( '' === $family ) {
+            $family = $order->get_meta( '_lawhaa_shipping_rate_family' );
+        }
+
+        if ( Lawhaa_Shipping_Rules::blocks_oto_delivery( $webhook->get_delivery_url(), $family ) ) {
             return false;
         }
 
