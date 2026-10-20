@@ -638,7 +638,7 @@ final class Lawhaa_Shipping_Rules {
                 $label = self::setting_label( $config, 'pickup_label', __( 'Pickup from center', 'lawhaa-shipping-rules' ) );
                 $rates[] = array(
                     'code'        => 'local_pickup',
-                    'label'       => $config['pickup_cost'] > 0 ? $label : sprintf( __( '%s - free', 'lawhaa-shipping-rules' ), $label ),
+                    'label'       => $label,
                     'cost'        => (float) $config['pickup_cost'],
                     'family'      => 'pickup',
                     'cod_allowed' => self::cod_allowed_for_rate( 'local_pickup' ),

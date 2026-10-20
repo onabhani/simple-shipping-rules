@@ -15,6 +15,21 @@ final class Lawhaa_Checkout {
         add_filter( 'woocommerce_webhook_should_deliver', array( $this, 'filter_oto_webhook' ), 20, 3 );
         add_filter( 'woocommerce_shipping_calculator_enable_postcode', '__return_false' );
         add_filter( 'woocommerce_default_address_fields', array( $this, 'make_postcode_optional' ) );
+        add_filter( 'woocommerce_cart_shipping_method_full_label', array( $this, 'show_zero_cost' ), 10, 2 );
+    }
+
+    /**
+     * WooCommerce omits the price of a zero-cost rate. Show pickup as 0 instead of a "free" label.
+     */
+    public function show_zero_cost( $label, $method ) {
+        if ( ! $method instanceof WC_Shipping_Rate || 'lawhaa_rules:local_pickup' !== $method->get_id() ) {
+            return $label;
+        }
+        if ( (float) $method->get_cost() > 0 ) {
+            return $label;
+        }
+
+        return $label . ': ' . wc_price( 0 );
     }
 
     public function selected_lawhaa_rate_code() {
