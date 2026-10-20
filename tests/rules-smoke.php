@@ -164,7 +164,7 @@ lawhaa_test_assert_same( 'Haversine distance', 17.3, round( Lawhaa_Shipping_Rule
 lawhaa_test_assert_same( 'No store point means no distance', null, Lawhaa_Shipping_Rules::destination_distance( '', 'Dammam' )['km'] );
 $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] = array( 'store_lat' => 26.45264275, 'store_lng' => 50.0721333 );
 Lawhaa_Shipping_Rules::reset_cache();
-lawhaa_test_assert_same( 'City fallback distance with road factor', array( 'km' => 30.6, 'source' => 'city' ), Lawhaa_Shipping_Rules::destination_distance( '', 'Khobar' ) );
+lawhaa_test_assert_same( 'City fallback distance with road factor', array( 'km' => 30.6, 'source' => 'city' ), array_merge( $lawhaa_city_distance = Lawhaa_Shipping_Rules::destination_distance( '', 'Khobar' ), array( 'km' => round( $lawhaa_city_distance['km'], 1 ) ) ) );
 lawhaa_test_assert_same( 'Unknown city gives no distance', null, Lawhaa_Shipping_Rules::destination_distance( '', 'Riyadh' )['km'] );
 unset( $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] );
 Lawhaa_Shipping_Rules::reset_cache();

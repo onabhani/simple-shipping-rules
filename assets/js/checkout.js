@@ -73,6 +73,15 @@
     lastSnapshot = currentSnapshot();
   });
 
+  // The national address validator fills city/district only after its own lookup
+  // (about 1s after typing), so refresh again once that lookup completes.
+  $(document).ajaxComplete(function(event, xhr, settings) {
+    var data = settings && typeof settings.data === 'string' ? settings.data : '';
+    if (data.indexOf('action=otoksa_validate_address') !== -1) {
+      scheduleCheckoutUpdate('national address validated', false);
+    }
+  });
+
   $(document.body)
     .off('.lawhaaShipping')
     .on('change.lawhaaShipping input.lawhaaShipping blur.lawhaaShipping', '#billing_country, #billing_city, #billing_state, #billing_address_1, #billing_address_2, #shipping_country, #shipping_city, #shipping_state, #shipping_address_1, #shipping_address_2', function() {

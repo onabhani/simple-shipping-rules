@@ -706,7 +706,7 @@ final class Lawhaa_Shipping_Rules {
     /**
      * Road-distance estimate in km from the store to the destination, with its source:
      * "address" (national address coordinates) or "city" (configured city point).
-     * km is null when the store point or the destination point is unknown.
+     * km is null when the store point or the destination point is unknown, and is not rounded.
      */
     public static function destination_distance( $short_code, $city ) {
         $config = self::config();
@@ -732,7 +732,8 @@ final class Lawhaa_Shipping_Rules {
 
         $km = self::haversine_km( $config['store_lat'], $config['store_lng'], $point[0], $point[1] ) * (float) $config['distance_road_factor'];
 
-        return array( 'km' => round( $km, 1 ), 'source' => $source );
+        // Unrounded: the max-distance check and the price use the exact value; display rounds.
+        return array( 'km' => $km, 'source' => $source );
     }
 
     public static function haversine_km( $lat1, $lng1, $lat2, $lng2 ) {

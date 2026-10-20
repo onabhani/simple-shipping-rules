@@ -63,7 +63,39 @@ final class Lawhaa_Checkout {
             return self::short_code_from_fields( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
         }
 
-        return WC()->session ? Lawhaa_Shipping_Rules::sanitize_short_code( WC()->session->get( 'lawhaa_short_code' ) ) : '';
+        // Checkout Blocks submit the validator's additional field through the Store API.
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return self::blocks_short_code();
+        }
+
+        $code = WC()->session ? Lawhaa_Shipping_Rules::sanitize_short_code( WC()->session->get( 'lawhaa_short_code' ) ) : '';
+
+        return '' !== $code ? $code : self::blocks_short_code();
+    }
+
+    /**
+     * Short code from the Checkout Blocks additional address field (shipping first, then billing).
+     */
+    private static function blocks_short_code() {
+        $service_class = '\Automattic\WooCommerce\Blocks\Domain\Services\CheckoutFields';
+        if ( ! function_exists( 'WC' ) || ! WC()->customer || ! class_exists( '\Automattic\WooCommerce\Blocks\Package' ) || ! class_exists( $service_class ) ) {
+            return '';
+        }
+
+        $field_id = (string) apply_filters( 'lawhaa_shipping_blocks_short_code_field', 'otoksa/shortcode' );
+        try {
+            $fields = \Automattic\WooCommerce\Blocks\Package::container()->get( $service_class );
+            foreach ( array( 'shipping', 'billing' ) as $group ) {
+                $code = Lawhaa_Shipping_Rules::sanitize_short_code( $fields->get_field_from_object( $field_id, WC()->customer, $group ) );
+                if ( '' !== $code ) {
+                    return $code;
+                }
+            }
+        } catch ( \Throwable $e ) {
+            Lawhaa_Shipping_Rules::log_debug( 'Blocks short code lookup failed' );
+        }
+
+        return '';
     }
 
     /**
@@ -261,7 +293,7 @@ final class Lawhaa_Checkout {
         if ( Lawhaa_Shipping_Rules::is_local_group( $group ) ) {
             $distance = Lawhaa_Shipping_Rules::destination_distance( self::current_short_code(), $city );
             if ( null !== $distance['km'] ) {
-                $order->update_meta_data( '_lawhaa_distance_km', $distance['km'] );
+                $order->update_meta_data( '_lawhaa_distance_km', round( $distance['km'], 1 ) );
                 $order->update_meta_data( '_lawhaa_distance_source', $distance['source'] );
             }
         }
