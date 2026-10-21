@@ -170,6 +170,11 @@ lawhaa_test_assert_same(
     false !== strpos( lawhaa_rate_label( lawhaa_rates_for( 'Dammam', 5, 200 ), 'mrsool' ), 'خلال 2-4 ساعات' )
 );
 unset( $GLOBALS['lawhaa_test_locale'] );
+lawhaa_test_assert_same(
+    'Free pickup label has no free suffix',
+    false,
+    false !== strpos( lawhaa_rate_label( lawhaa_rates_for( 'Dammam', 5, 200 ), 'local_pickup' ), 'free' )
+);
 
 lawhaa_test_assert_same( 'COD allowed for center', true, Lawhaa_Shipping_Rules::cod_allowed_for_rate( 'center_delivery' ) );
 lawhaa_test_assert_same( 'COD blocked for Mrsool', false, Lawhaa_Shipping_Rules::cod_allowed_for_rate( 'mrsool' ) );
