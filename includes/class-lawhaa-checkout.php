@@ -41,7 +41,18 @@ final class Lawhaa_Checkout {
         $billing  = isset( $keys['billing'], $fields[ $keys['billing'] ] ) ? Lawhaa_Shipping_Rules::sanitize_short_code( $fields[ $keys['billing'] ] ) : '';
         $shipping = isset( $keys['shipping'], $fields[ $keys['shipping'] ] ) ? Lawhaa_Shipping_Rules::sanitize_short_code( $fields[ $keys['shipping'] ] ) : '';
 
-        return ! empty( $fields['ship_to_different_address'] ) && '' !== $shipping ? $shipping : $billing;
+        // A separate shipping address never borrows the billing coordinates; without its own
+        // code the shipping city point is used.
+        return ! empty( $fields['ship_to_different_address'] ) ? $shipping : $billing;
+    }
+
+    /**
+     * Destination city of the posted checkout fields, matching short_code_from_fields().
+     */
+    private static function city_from_fields( $fields ) {
+        $key = ! empty( $fields['ship_to_different_address'] ) ? 'shipping_city' : 'billing_city';
+
+        return isset( $fields[ $key ] ) && is_scalar( $fields[ $key ] ) ? Lawhaa_Shipping_Rules::normalize_location( $fields[ $key ] ) : '';
     }
 
     /**
@@ -53,10 +64,22 @@ final class Lawhaa_Checkout {
         }
 
         parse_str( $post_data, $fields );
-        WC()->session->set( 'lawhaa_short_code', self::short_code_from_fields( is_array( $fields ) ? wp_unslash( $fields ) : array() ) );
+        $fields = is_array( $fields ) ? wp_unslash( $fields ) : array();
+        // Keep the city with the code so a later destination change (cart calculator) drops it.
+        WC()->session->set(
+            'lawhaa_short_code',
+            array(
+                'code' => self::short_code_from_fields( $fields ),
+                'city' => self::city_from_fields( $fields ),
+            )
+        );
     }
 
-    public static function current_short_code() {
+    /**
+     * @param string|null $city Destination city of the package being rated; the cached session
+     *                          code is used only when it was saved for the same city.
+     */
+    public static function current_short_code( $city = null ) {
         $keys = self::short_code_fields();
         // WooCommerce verifies the checkout nonce before calculating totals for the order.
         if ( isset( $keys['billing'], $_POST[ $keys['billing'] ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -68,9 +91,14 @@ final class Lawhaa_Checkout {
             return self::blocks_short_code();
         }
 
-        $code = WC()->session ? Lawhaa_Shipping_Rules::sanitize_short_code( WC()->session->get( 'lawhaa_short_code' ) ) : '';
+        $saved = WC()->session ? WC()->session->get( 'lawhaa_short_code' ) : null;
+        if ( is_array( $saved ) && isset( $saved['code'], $saved['city'] ) && '' !== $saved['code'] ) {
+            $matches = null === $city || Lawhaa_Shipping_Rules::normalize_location( $city ) === $saved['city'];
 
-        return '' !== $code ? $code : self::blocks_short_code();
+            return $matches ? Lawhaa_Shipping_Rules::sanitize_short_code( $saved['code'] ) : '';
+        }
+
+        return self::blocks_short_code();
     }
 
     /**
@@ -102,9 +130,9 @@ final class Lawhaa_Checkout {
      * Carry the short code in each package so it drives the distance and the rate cache hash.
      */
     public function add_short_code_to_packages( $packages ) {
-        $code = self::current_short_code();
         foreach ( $packages as $index => $package ) {
-            $packages[ $index ]['lawhaa_short_code'] = $code;
+            $city = isset( $package['destination']['city'] ) ? (string) $package['destination']['city'] : '';
+            $packages[ $index ]['lawhaa_short_code'] = self::current_short_code( $city );
         }
 
         return $packages;
@@ -291,7 +319,7 @@ final class Lawhaa_Checkout {
         $order->update_meta_data( '_lawhaa_package_weight_kg', Lawhaa_Shipping_Rules::package_weight_kg( array( 'contents' => WC()->cart ? WC()->cart->get_cart() : array() ) ) );
 
         if ( Lawhaa_Shipping_Rules::is_local_group( $group ) ) {
-            $distance = Lawhaa_Shipping_Rules::destination_distance( self::current_short_code(), $city );
+            $distance = Lawhaa_Shipping_Rules::destination_distance( self::current_short_code( $city ), $city );
             if ( null !== $distance['km'] ) {
                 $order->update_meta_data( '_lawhaa_distance_km', round( $distance['km'], 1 ) );
                 $order->update_meta_data( '_lawhaa_distance_source', $distance['source'] );
