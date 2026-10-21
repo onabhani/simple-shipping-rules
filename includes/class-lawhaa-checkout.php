@@ -132,7 +132,12 @@ final class Lawhaa_Checkout {
     public function add_short_code_to_packages( $packages ) {
         foreach ( $packages as $index => $package ) {
             $city = isset( $package['destination']['city'] ) ? (string) $package['destination']['city'] : '';
-            $packages[ $index ]['lawhaa_short_code'] = self::current_short_code( $city );
+            $code = self::current_short_code( $city );
+            $packages[ $index ]['lawhaa_short_code'] = $code;
+            // The lookup result is part of the package hash, so rates cached while a lookup
+            // failed (city fallback) are recalculated once the coordinates resolve.
+            $point = '' !== $code && class_exists( 'Lawhaa_National_Address' ) ? Lawhaa_National_Address::coordinates( $code ) : null;
+            $packages[ $index ]['lawhaa_short_code_point'] = $point ? implode( ',', $point ) : '';
         }
 
         return $packages;
