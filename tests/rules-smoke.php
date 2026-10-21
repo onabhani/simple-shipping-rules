@@ -74,15 +74,16 @@ function lawhaa_test_assert_same( $label, $expected, $actual ) {
     }
 }
 
-function lawhaa_rates_for( $city, $weight_kg, $amount ) {
+function lawhaa_rates_for( $city, $weight_kg, $amount, $distance_km = 5.0 ) {
     return Lawhaa_Shipping_Rules::build_rates(
         array(
-            'country'   => 'SA',
-            'city'      => $city,
-            'district'  => '',
-            'group'     => Lawhaa_Shipping_Rules::city_group( $city ),
-            'weight_kg' => $weight_kg,
-            'amount'    => $amount,
+            'country'     => 'SA',
+            'city'        => $city,
+            'district'    => '',
+            'group'       => Lawhaa_Shipping_Rules::city_group( $city ),
+            'weight_kg'   => $weight_kg,
+            'amount'      => $amount,
+            'distance_km' => $distance_km,
         )
     );
 }
@@ -106,11 +107,12 @@ function lawhaa_rate_label( $rates, $code ) {
 
 // Rate-cost scenarios: [ label, city, weight_kg, amount, expected code => cost ].
 // Includes the README-CODEX pricing cases plus boundary cases at the expensive
-// thresholds (exactly at / just past mrsool_max_kg, carrier_free_max_kg, heavy_threshold_kg).
+// thresholds (exactly at / just past carrier_free_max_kg, heavy_threshold_kg). Mrsool/C4D are priced
+// by distance (5 km here, inside the 10 km base), so weight no longer changes their cost.
 $cost_scenarios = array(
-    array( 'Dammam, 5 kg, 200 SAR', 'Dammam', 5, 200, array( 'center_delivery' => 15.0, 'mrsool' => 38.0, 'c4d' => 29.0, 'local_pickup' => 0.0 ) ),
-    array( 'Qatif, 5 kg, 200 SAR', 'Qatif', 5, 200, array( 'center_delivery' => 25.0, 'mrsool' => 38.0, 'c4d' => 29.0, 'local_pickup' => 0.0 ) ),
-    array( 'Dammam, 5 kg, 350 SAR (center free)', 'Dammam', 5, 350, array( 'center_delivery' => 0.0, 'mrsool' => 38.0, 'c4d' => 29.0, 'local_pickup' => 0.0 ) ),
+    array( 'Dammam, 5 kg, 200 SAR', 'Dammam', 5, 200, array( 'center_delivery' => 15.0, 'mrsool' => 30.0, 'c4d' => 25.0, 'local_pickup' => 0.0 ) ),
+    array( 'Qatif, 5 kg, 200 SAR', 'Qatif', 5, 200, array( 'center_delivery' => 25.0, 'mrsool' => 30.0, 'c4d' => 25.0, 'local_pickup' => 0.0 ) ),
+    array( 'Dammam, 5 kg, 350 SAR (center free)', 'Dammam', 5, 350, array( 'center_delivery' => 0.0, 'mrsool' => 30.0, 'c4d' => 25.0, 'local_pickup' => 0.0 ) ),
     array( 'Riyadh, 20 kg, 200 SAR', 'Riyadh', 20, 200, array( 'carrier' => 30.0 ) ),
     array( 'Riyadh, 18 kg, 352 SAR (carrier free)', 'Riyadh', 18, 352, array( 'carrier_free' => 0.0 ) ),
     array( 'Riyadh, 40 kg, 400 SAR (carrier free)', 'Riyadh', 40, 400, array( 'carrier_free' => 0.0 ) ),
@@ -120,7 +122,8 @@ $cost_scenarios = array(
     array( 'Carrier not free just past carrier_free_max_kg (50.01)', 'Riyadh', 50.01, 400, array( 'carrier' => 63.0 ) ),
     array( 'Heavy NOT triggered at exactly heavy_threshold_kg (150)', 'Riyadh', 150, 400, array( 'carrier' => 174.0 ) ),
     array( 'Heavy triggered just past heavy_threshold_kg (150.01)', 'Riyadh', 150.01, 400, array( 'heavy_sink' => 307.0 ) ),
-    array( 'Zero-weight local cart bills fast at first-kg minimum', 'Dammam', 0, 200, array( 'center_delivery' => 15.0, 'mrsool' => 30.0, 'c4d' => 25.0, 'local_pickup' => 0.0 ) ),
+    array( 'Zero-weight local cart bills fast at base price', 'Dammam', 0, 200, array( 'center_delivery' => 15.0, 'mrsool' => 30.0, 'c4d' => 25.0, 'local_pickup' => 0.0 ) ),
+    array( 'Heavy local cart (80 kg) still gets fast delivery by distance', 'Dammam', 80, 200, array( 'center_delivery' => 15.0, 'mrsool' => 30.0, 'c4d' => 25.0, 'local_pickup' => 0.0 ) ),
 );
 foreach ( $cost_scenarios as $scenario ) {
     list( $label, $city, $weight, $amount, $expected ) = $scenario;
@@ -129,13 +132,42 @@ foreach ( $cost_scenarios as $scenario ) {
 
 // Rate-code presence scenarios: [ label, city, weight_kg, amount, expected ordered codes ].
 $code_scenarios = array(
-    array( 'Mrsool/C4D offered at exactly mrsool_max_kg (50)', 'Dammam', 50, 200, array( 'center_delivery', 'mrsool', 'c4d', 'local_pickup' ) ),
-    array( 'Mrsool/C4D dropped just past mrsool_max_kg (50.01)', 'Dammam', 50.01, 200, array( 'center_delivery', 'local_pickup' ) ),
+    array( 'Mrsool/C4D offered at exactly max_km (50)', 'Dammam', 5, 200, 50.0, array( 'center_delivery', 'mrsool', 'c4d', 'local_pickup' ) ),
+    array( 'Mrsool/C4D dropped just past max_km (50.1)', 'Dammam', 5, 200, 50.1, array( 'center_delivery', 'local_pickup' ) ),
+    array( 'Mrsool/C4D dropped without a distance', 'Dammam', 5, 200, null, array( 'center_delivery', 'local_pickup' ) ),
 );
 foreach ( $code_scenarios as $scenario ) {
-    list( $label, $city, $weight, $amount, $expected ) = $scenario;
-    lawhaa_test_assert_same( $label, $expected, array_keys( lawhaa_rate_costs( lawhaa_rates_for( $city, $weight, $amount ) ) ) );
+    list( $label, $city, $weight, $amount, $distance, $expected ) = $scenario;
+    lawhaa_test_assert_same( $label, $expected, array_keys( lawhaa_rate_costs( lawhaa_rates_for( $city, $weight, $amount, $distance ) ) ) );
 }
+
+// Distance pricing: base price covers base_km (10); every started km after that adds per_km (2).
+$distance_scenarios = array(
+    array( 'Exactly base distance', 10.0, 30.0, 25.0 ),
+    array( 'Just past base distance', 10.1, 32.0, 27.0 ),
+    array( '23.4 km', 23.4, 58.0, 53.0 ),
+    array( 'Max distance', 50.0, 110.0, 105.0 ),
+);
+foreach ( $distance_scenarios as $scenario ) {
+    list( $label, $km, $mrsool, $c4d ) = $scenario;
+    $costs = lawhaa_rate_costs( lawhaa_rates_for( 'Dammam', 5, 200, $km ) );
+    lawhaa_test_assert_same( 'Mrsool cost: ' . $label, $mrsool, $costs['mrsool'] );
+    lawhaa_test_assert_same( 'C4D cost: ' . $label, $c4d, $costs['c4d'] );
+}
+
+lawhaa_test_assert_same( 'Short code is normalized', 'EMDC3076', Lawhaa_Shipping_Rules::sanitize_short_code( ' emdc 3076 ' ) );
+lawhaa_test_assert_same( 'Malformed short code is rejected', '', Lawhaa_Shipping_Rules::sanitize_short_code( 'EMD3076' ) );
+lawhaa_test_assert_same( 'City point by Arabic name', array( 26.2794, 50.2083 ), Lawhaa_Shipping_Rules::city_point( 'الخبر' ) );
+lawhaa_test_assert_same( 'Unknown city has no point', null, Lawhaa_Shipping_Rules::city_point( 'Riyadh' ) );
+// Store (Dammam, Al Aziziyah) to Al Khobar, Qurtubah: about 17.3 km in a straight line.
+lawhaa_test_assert_same( 'Haversine distance', 17.3, round( Lawhaa_Shipping_Rules::haversine_km( 26.45264275, 50.0721333, 26.3352024, 50.18557139 ), 1 ) );
+lawhaa_test_assert_same( 'No store point means no distance', null, Lawhaa_Shipping_Rules::destination_distance( '', 'Dammam' )['km'] );
+$GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] = array( 'store_lat' => 26.45264275, 'store_lng' => 50.0721333 );
+Lawhaa_Shipping_Rules::reset_cache();
+lawhaa_test_assert_same( 'City fallback distance with road factor', array( 'km' => 30.6, 'source' => 'city' ), array_merge( $lawhaa_city_distance = Lawhaa_Shipping_Rules::destination_distance( '', 'Khobar' ), array( 'km' => round( $lawhaa_city_distance['km'], 1 ) ) ) );
+lawhaa_test_assert_same( 'Unknown city gives no distance', null, Lawhaa_Shipping_Rules::destination_distance( '', 'Riyadh' )['km'] );
+unset( $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] );
+Lawhaa_Shipping_Rules::reset_cache();
 
 // Group allowlists (pickup_groups/fast_groups) must still restrict pickup/fast delivery (see docs/FILTER-EXAMPLES.php).
 // config() memoizes per request, so reset the cache whenever the stored option changes mid-test.
@@ -246,7 +278,8 @@ $oto_url = 'https://oto-webhook-listener-znlfrydhea-ew.a.run.app/salesChannel/wo
 $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] = array();
 Lawhaa_Shipping_Rules::reset_cache();
 lawhaa_test_assert_same( 'OTO: center delivery is blocked by default', true, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'center' ) );
-lawhaa_test_assert_same( 'OTO: fast delivery is blocked by default', true, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'fast' ) );
+lawhaa_test_assert_same( 'OTO: fast delivery (C4D) is blocked by default', true, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, Lawhaa_Shipping_Rules::rate_family( 'c4d' ) ) );
+lawhaa_test_assert_same( 'OTO: Mrsool is sent by default', false, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, Lawhaa_Shipping_Rules::rate_family( 'mrsool' ) ) );
 lawhaa_test_assert_same( 'OTO: pickup is blocked by default', true, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'pickup' ) );
 lawhaa_test_assert_same( 'OTO: carrier is sent', false, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'carrier' ) );
 lawhaa_test_assert_same( 'OTO: heavy is sent by default', false, Lawhaa_Shipping_Rules::blocks_oto_delivery( $oto_url, 'heavy' ) );

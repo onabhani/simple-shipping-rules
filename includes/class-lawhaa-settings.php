@@ -36,7 +36,33 @@ final class Lawhaa_Settings {
     }
 
     public function sanitize_settings( $input ) {
-        return Lawhaa_Shipping_Rules::sanitize_config( is_array( $input ) ? $input : array() );
+        $config = Lawhaa_Shipping_Rules::sanitize_config( is_array( $input ) ? $input : array() );
+
+        // Look up the store point when the store short code is new or changed.
+        $saved    = get_option( self::OPTION_NAME, array() );
+        $saved    = is_array( $saved ) ? Lawhaa_Shipping_Rules::sanitize_config( $saved ) : Lawhaa_Shipping_Rules::default_config();
+        $previous = $saved['store_short_code'];
+        if ( '' !== $config['store_short_code'] && ( $config['store_short_code'] !== $previous || $config['store_lat'] <= 0.0 || $config['store_lng'] <= 0.0 ) ) {
+            $point = Lawhaa_National_Address::coordinates( $config['store_short_code'] );
+            if ( $point ) {
+                $config['store_lat'] = $point[0];
+                $config['store_lng'] = $point[1];
+            } else {
+                $manual = $config['store_lat'] > 0.0 && $config['store_lng'] > 0.0
+                    && ( $config['store_lat'] !== $saved['store_lat'] || $config['store_lng'] !== $saved['store_lng'] );
+                if ( ! $manual && $config['store_short_code'] !== $previous ) {
+                    // Keep the previous code with its point so the new code is looked up again on the next save.
+                    $config['store_short_code'] = $previous;
+                    $config['store_lat']        = $saved['store_lat'];
+                    $config['store_lng']        = $saved['store_lng'];
+                }
+                if ( ! $manual ) {
+                    add_settings_error( self::OPTION_NAME, 'lawhaa_store_point', __( 'Could not find the store national address. Enter the store latitude and longitude manually.', 'lawhaa-shipping-rules' ) );
+                }
+            }
+        }
+
+        return $config;
     }
 
     public function render_page() {
@@ -72,6 +98,14 @@ final class Lawhaa_Settings {
         $this->text( $settings, 'center_delivery_estimate_ar', __( 'Delivery estimate (Arabic)', 'lawhaa-shipping-rules' ) );
         $this->checkbox( $settings, 'center_cod_allowed', __( 'COD allowed', 'lawhaa-shipping-rules' ) );
         $this->number( $settings, 'center_cod_fee', __( 'COD fee', 'lawhaa-shipping-rules' ) );
+        $this->section_close();
+
+        $this->section_open( __( 'Distance (MRSOOL / C4D)', 'lawhaa-shipping-rules' ) );
+        $this->text( $settings, 'store_short_code', __( 'Store national address short code', 'lawhaa-shipping-rules' ) );
+        $this->number( $settings, 'store_lat', __( 'Store latitude', 'lawhaa-shipping-rules' ), '0.000001' );
+        $this->number( $settings, 'store_lng', __( 'Store longitude', 'lawhaa-shipping-rules' ), '0.000001' );
+        $this->number( $settings, 'distance_road_factor', __( 'Road factor', 'lawhaa-shipping-rules' ) );
+        $this->textarea( $settings, 'distance_city_points', __( 'City points', 'lawhaa-shipping-rules' ), __( 'Used when the customer has no national address short code. One city per line: names separated by commas | latitude, longitude', 'lawhaa-shipping-rules' ) );
         $this->section_close();
 
         $this->fast_section( $settings, __( 'MRSOOL Fast Shipping', 'lawhaa-shipping-rules' ), 'mrsool', __( 'Enable MRSOOL', 'lawhaa-shipping-rules' ) );
@@ -126,9 +160,10 @@ final class Lawhaa_Settings {
         $this->section_open( $title );
         $this->checkbox( $settings, $prefix . '_enabled', $enable_label );
         $this->textarea( $settings, $prefix . '_aliases', __( 'Allowed cities/districts', 'lawhaa-shipping-rules' ), __( 'One alias per line. Supports Arabic and English.', 'lawhaa-shipping-rules' ) );
-        $this->number( $settings, $prefix . '_max_kg', __( 'Max weight (kg)', 'lawhaa-shipping-rules' ) );
-        $this->number( $settings, $prefix . '_first_kg', __( 'First kg price', 'lawhaa-shipping-rules' ) );
-        $this->number( $settings, $prefix . '_extra_per_kg', __( 'Additional kg price', 'lawhaa-shipping-rules' ) );
+        $this->number( $settings, $prefix . '_max_km', __( 'Max distance (km)', 'lawhaa-shipping-rules' ) );
+        $this->number( $settings, $prefix . '_base_km', __( 'Base distance (km)', 'lawhaa-shipping-rules' ) );
+        $this->number( $settings, $prefix . '_base_cost', __( 'Base distance price', 'lawhaa-shipping-rules' ) );
+        $this->number( $settings, $prefix . '_per_km', __( 'Additional km price', 'lawhaa-shipping-rules' ) );
         $this->text( $settings, $prefix . '_delivery_estimate', __( 'Delivery estimate (English/default)', 'lawhaa-shipping-rules' ) );
         $this->text( $settings, $prefix . '_delivery_estimate_ar', __( 'Delivery estimate (Arabic)', 'lawhaa-shipping-rules' ) );
         $this->checkbox( $settings, $prefix . '_cod_allowed', __( 'COD allowed', 'lawhaa-shipping-rules' ) );
@@ -160,7 +195,8 @@ final class Lawhaa_Settings {
     private function family_checkboxes( $settings, $key, $label ) {
         $labels   = array(
             'center'  => __( 'Center delivery', 'lawhaa-shipping-rules' ),
-            'fast'    => __( 'Fast delivery (MRSOOL / C4D)', 'lawhaa-shipping-rules' ),
+            'mrsool'  => __( 'MRSOOL', 'lawhaa-shipping-rules' ),
+            'fast'    => __( 'Fast delivery (C4D)', 'lawhaa-shipping-rules' ),
             'pickup'  => __( 'Local pickup', 'lawhaa-shipping-rules' ),
             'carrier' => __( 'Carrier shipping', 'lawhaa-shipping-rules' ),
             'heavy'   => __( 'Heavy / sink shipping', 'lawhaa-shipping-rules' ),
@@ -185,13 +221,14 @@ final class Lawhaa_Settings {
         );
     }
 
-    private function number( $settings, $key, $label ) {
+    private function number( $settings, $key, $label, $step = '0.01' ) {
         printf(
-            '<tr><th scope="row"><label for="%1$s">%2$s</label></th><td><input type="number" min="0" step="0.01" class="regular-text" id="%1$s" name="%3$s" value="%4$s"></td></tr>',
+            '<tr><th scope="row"><label for="%1$s">%2$s</label></th><td><input type="number" min="0" step="%5$s" class="regular-text" id="%1$s" name="%3$s" value="%4$s"></td></tr>',
             esc_attr( $key ),
             esc_html( $label ),
             $this->field_name( $key ),
-            esc_attr( isset( $settings[ $key ] ) ? $settings[ $key ] : '' )
+            esc_attr( isset( $settings[ $key ] ) ? $settings[ $key ] : '' ),
+            esc_attr( $step )
         );
     }
 

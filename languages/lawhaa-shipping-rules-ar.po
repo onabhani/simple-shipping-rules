@@ -364,6 +364,54 @@ msgstr "شحن الناقل"
 msgid "%s SAR if COD is selected"
 msgstr "%s ريال إذا تم اختيار الدفع عند الاستلام"
 
+msgid "Distance"
+msgstr "المسافة"
+
+msgid "%s km"
+msgstr "%s كم"
+
+msgid "Distance (MRSOOL / C4D)"
+msgstr "المسافة (مرسول / C4D)"
+
+msgid "Store national address short code"
+msgstr "العنوان الوطني المختصر للمتجر"
+
+msgid "Store latitude"
+msgstr "خط عرض المتجر"
+
+msgid "Store longitude"
+msgstr "خط طول المتجر"
+
+msgid "Road factor"
+msgstr "معامل الطرق"
+
+msgid "City points"
+msgstr "نقاط المدن"
+
+msgid "Used when the customer has no national address short code. One city per line: names separated by commas | latitude, longitude"
+msgstr "تُستخدم عندما لا يكتب العميل العنوان الوطني المختصر. مدينة في كل سطر: الأسماء مفصولة بفواصل | خط العرض, خط الطول"
+
+msgid "Max distance (km)"
+msgstr "المسافة القصوى (كم)"
+
+msgid "Base distance (km)"
+msgstr "المسافة الأساسية (كم)"
+
+msgid "Base distance price"
+msgstr "سعر المسافة الأساسية"
+
+msgid "Additional km price"
+msgstr "سعر كل كم إضافي"
+
+msgid "MRSOOL"
+msgstr "مرسول"
+
+msgid "Fast delivery (C4D)"
+msgstr "توصيل سريع (C4D)"
+
+msgid "Could not find the store national address. Enter the store latitude and longitude manually."
+msgstr "تعذر العثور على العنوان الوطني للمتجر. أدخل خط العرض وخط الطول يدوياً."
+
 #~ msgid "Used by MRSOOL and C4D by default. One alias per line."
 #~ msgstr "تستخدم افتراضياً لمرسول و C4D. اسم بديل واحد في كل سطر."
 

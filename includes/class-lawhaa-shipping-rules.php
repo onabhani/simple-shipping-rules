@@ -101,6 +101,10 @@ final class Lawhaa_Shipping_Rules {
         if ( $config['heavy_first_block_kg'] <= 0.0 ) {
             $config['heavy_first_block_kg'] = $defaults['heavy_first_block_kg'];
         }
+        if ( $config['distance_road_factor'] <= 0.0 ) {
+            $config['distance_road_factor'] = $defaults['distance_road_factor'];
+        }
+        $config['store_short_code'] = self::sanitize_short_code( $config['store_short_code'] );
 
         return $config;
     }
@@ -124,18 +128,20 @@ final class Lawhaa_Shipping_Rules {
             'local_25_aliases'          => "Qatif\nQateef\nالقطيف\nقطيف\nKhobar\nAl Khobar\nالخبر\nخبر\nTarout\nTarut\nTaroot\nتاروت\nAziziyah\nAzizia\nAziziah\nالعزيزية\nالعزيزيه\nعزيزية",
 
             'mrsool_enabled'            => 'yes',
-            'mrsool_max_kg'             => 50.0,
-            'mrsool_first_kg'           => 30.0,
-            'mrsool_extra_per_kg'       => 2.0,
+            'mrsool_max_km'             => 50.0,
+            'mrsool_base_km'            => 10.0,
+            'mrsool_base_cost'          => 30.0,
+            'mrsool_per_km'             => 2.0,
             'mrsool_delivery_estimate'  => '2-4 hours',
             'mrsool_delivery_estimate_ar' => 'خلال 2-4 ساعات',
             'mrsool_cod_allowed'        => 'no',
             'mrsool_aliases'            => "Dammam\nالدمام\nدمام\nSaihat\nSayhat\nSihat\nسيهات\nQatif\nQateef\nالقطيف\nقطيف\nKhobar\nAl Khobar\nالخبر\nخبر\nTarout\nTarut\nTaroot\nتاروت\nAziziyah\nAzizia\nAziziah\nالعزيزية\nالعزيزيه\nعزيزية\nAl Iskan Dist\nحي الإسكان\nالاسكان\nالإسكان",
 
             'c4d_enabled'               => 'yes',
-            'c4d_max_kg'                => 50.0,
-            'c4d_first_kg'              => 25.0,
-            'c4d_extra_per_kg'          => 1.0,
+            'c4d_max_km'                => 50.0,
+            'c4d_base_km'               => 10.0,
+            'c4d_base_cost'             => 25.0,
+            'c4d_per_km'                => 2.0,
             'c4d_delivery_estimate'     => '2-4 hours',
             'c4d_delivery_estimate_ar'  => 'خلال 2-4 ساعات',
             'c4d_cod_allowed'           => 'no',
@@ -170,6 +176,15 @@ final class Lawhaa_Shipping_Rules {
             'heavy_delivery_estimate'   => '1-5 business days',
             'heavy_delivery_estimate_ar' => 'خلال 1-5 أيام عمل',
 
+            // Distance pricing (Mrsool, C4D): straight-line distance from the store to the
+            // customer's national address, times the road factor. The store point is looked up
+            // from store_short_code on save. Without customer coordinates, the city point is used.
+            'store_short_code'          => '',
+            'store_lat'                 => 0.0,
+            'store_lng'                 => 0.0,
+            'distance_road_factor'      => 1.3,
+            'distance_city_points'      => "Dammam, الدمام, دمام | 26.4207, 50.0888\nSaihat, Sayhat, Sihat, سيهات | 26.4834, 50.0412\nQatif, Qateef, Al Qatif, القطيف, قطيف | 26.5590, 50.0060\nKhobar, Al Khobar, Al Khubar, الخبر, خبر | 26.2794, 50.2083\nTarout, Tarut, تاروت | 26.5750, 50.0640\nDhahran, الظهران | 26.2886, 50.1140\nSafwa, صفوى | 26.6497, 49.9553\nAwamiyah, العوامية | 26.5880, 49.9870\nAziziyah, Al Aziziyah, العزيزية | 26.1900, 50.1900\nRas Tanura, رأس تنورة | 26.6436, 50.1588",
+
             // Coarse region gate for pickup/fast delivery. Filter-only (see docs/FILTER-EXAMPLES.php);
             // per-method alias lists provide the fine-grained per-carrier coverage.
             'pickup_groups'             => array( self::GROUP_LOCAL_15, self::GROUP_LOCAL_25 ),
@@ -177,6 +192,7 @@ final class Lawhaa_Shipping_Rules {
 
             // Orders whose rate family is listed here are not sent to webhooks whose
             // delivery URL contains oto_webhook_match (OTO registers its own WC webhooks).
+            // Mrsool has its own family and is sent; C4D ("fast") is not.
             'oto_excluded_families'     => array( 'center', 'fast', 'pickup' ),
             'oto_webhook_match'         => 'oto-webhook-listener',
         );
@@ -205,7 +221,7 @@ final class Lawhaa_Shipping_Rules {
     }
 
     private static function is_alias_key( $key ) {
-        return in_array( $key, array( 'local_15_aliases', 'local_25_aliases', 'mrsool_aliases', 'c4d_aliases', 'pickup_aliases' ), true );
+        return in_array( $key, array( 'local_15_aliases', 'local_25_aliases', 'mrsool_aliases', 'c4d_aliases', 'pickup_aliases', 'distance_city_points' ), true );
     }
 
     private static function is_numeric_config_key( $key ) {
@@ -216,12 +232,17 @@ final class Lawhaa_Shipping_Rules {
                 'center_local_15_cost',
                 'center_local_25_cost',
                 'center_cod_fee',
-                'mrsool_max_kg',
-                'mrsool_first_kg',
-                'mrsool_extra_per_kg',
-                'c4d_max_kg',
-                'c4d_first_kg',
-                'c4d_extra_per_kg',
+                'mrsool_max_km',
+                'mrsool_base_km',
+                'mrsool_base_cost',
+                'mrsool_per_km',
+                'c4d_max_km',
+                'c4d_base_km',
+                'c4d_base_cost',
+                'c4d_per_km',
+                'store_lat',
+                'store_lng',
+                'distance_road_factor',
                 'pickup_cost',
                 'pickup_cod_fee',
                 'carrier_first_block_kg',
@@ -316,6 +337,10 @@ final class Lawhaa_Shipping_Rules {
         $weight_kg = self::package_weight_kg( $package );
         $amount    = isset( $package['contents_cost'] ) ? self::sanitize_non_negative_float( $package['contents_cost'], 0.0 ) : self::cart_amount();
         $group     = self::city_group( $city, $district );
+        $distance  = array( 'km' => null, 'source' => '' );
+        if ( self::is_local_group( $group ) ) {
+            $distance = self::destination_distance( isset( $package['lawhaa_short_code'] ) ? $package['lawhaa_short_code'] : '', $city );
+        }
 
         $context = array(
             'country'   => strtoupper( (string) $country ),
@@ -327,6 +352,8 @@ final class Lawhaa_Shipping_Rules {
             'group'     => $group,
             'weight_kg' => $weight_kg,
             'amount'    => $amount,
+            'distance_km'     => $distance['km'],
+            'distance_source' => $distance['source'],
         );
 
         return apply_filters( 'lawhaa_shipping_package_context', $context, $package );
@@ -550,6 +577,7 @@ final class Lawhaa_Shipping_Rules {
         $group     = isset( $context['group'] ) ? self::sanitize_group( $context['group'], self::GROUP_CARRIER ) : self::GROUP_CARRIER;
         $weight_kg = isset( $context['weight_kg'] ) ? self::sanitize_non_negative_float( $context['weight_kg'], 0.0 ) : 0.0;
         $amount    = isset( $context['amount'] ) ? self::sanitize_non_negative_float( $context['amount'], 0.0 ) : 0.0;
+        $distance_km = isset( $context['distance_km'] ) && is_numeric( $context['distance_km'] ) ? max( 0.0, (float) $context['distance_km'] ) : null;
 
         if ( $country && 'SA' !== $country ) {
             return apply_filters( 'lawhaa_shipping_rates', $rates, $context, $config );
@@ -571,7 +599,7 @@ final class Lawhaa_Shipping_Rules {
                     __( 'Rule', 'lawhaa-shipping-rules' ) => sprintf( __( 'Orders above %s kg', 'lawhaa-shipping-rules' ), wc_format_decimal( $config['heavy_threshold_kg'], 2 ) ),
                 ),
             );
-            self::log_debug( 'Generated Lawhaa rates', compact( 'city', 'district', 'group', 'weight_kg', 'amount', 'rates' ) );
+            self::log_debug( 'Generated Lawhaa rates', compact( 'city', 'district', 'group', 'weight_kg', 'amount', 'distance_km', 'rates' ) );
             return apply_filters( 'lawhaa_shipping_rates', $rates, $context, $config );
         }
 
@@ -600,34 +628,22 @@ final class Lawhaa_Shipping_Rules {
             $fast_group_ok  = in_array( $group, $fast_groups, true );
             $mrsool_allowed = $fast_group_ok && self::matches_alias_group( 'mrsool', $city, $district );
             $c4d_allowed    = $fast_group_ok && self::matches_alias_group( 'c4d', $city, $district );
-            if ( 'yes' === $config['mrsool_enabled'] && $mrsool_allowed && $weight_kg <= (float) $config['mrsool_max_kg'] ) {
-                $estimate = self::localized_estimate( $config, 'mrsool_delivery_estimate' );
+            foreach ( array( 'mrsool' => $mrsool_allowed, 'c4d' => $c4d_allowed ) as $code => $allowed ) {
+                if ( 'yes' !== $config[ $code . '_enabled' ] || ! $allowed || null === $distance_km || $distance_km > (float) $config[ $code . '_max_km' ] ) {
+                    continue;
+                }
+                $estimate = self::localized_estimate( $config, $code . '_delivery_estimate' );
+                $label    = 'mrsool' === $code ? __( 'Fast shipping - Mrsool', 'lawhaa-shipping-rules' ) : __( 'Fast shipping - C4D', 'lawhaa-shipping-rules' );
                 $rates[]  = array(
-                    'code'        => 'mrsool',
-                    'label'       => self::label_with_estimate( __( 'Fast shipping - Mrsool', 'lawhaa-shipping-rules' ), $estimate ),
-                    'cost'        => self::mrsool_cost( $weight_kg, $config ),
-                    'family'      => 'fast',
-                    'cod_allowed' => self::cod_allowed_for_rate( 'mrsool' ),
-                    'cod_fee'     => self::cod_fee_for_rate( 'mrsool' ),
+                    'code'        => $code,
+                    'label'       => self::label_with_estimate( $label, $estimate ),
+                    'cost'        => self::distance_cost( $distance_km, $code, $config ),
+                    'family'      => self::rate_family( $code ),
+                    'cod_allowed' => self::cod_allowed_for_rate( $code ),
+                    'cod_fee'     => self::cod_fee_for_rate( $code ),
                     'meta'        => array(
                         __( 'Delivery time', 'lawhaa-shipping-rules' ) => $estimate,
-                        __( 'Maximum weight', 'lawhaa-shipping-rules' ) => sprintf( __( '%s kg', 'lawhaa-shipping-rules' ), wc_format_decimal( $config['mrsool_max_kg'], 2 ) ),
-                    ),
-                );
-            }
-
-            if ( 'yes' === $config['c4d_enabled'] && $c4d_allowed && $weight_kg <= (float) $config['c4d_max_kg'] ) {
-                $estimate = self::localized_estimate( $config, 'c4d_delivery_estimate' );
-                $rates[]  = array(
-                    'code'        => 'c4d',
-                    'label'       => self::label_with_estimate( __( 'Fast shipping - C4D', 'lawhaa-shipping-rules' ), $estimate ),
-                    'cost'        => self::c4d_cost( $weight_kg, $config ),
-                    'family'      => 'fast',
-                    'cod_allowed' => self::cod_allowed_for_rate( 'c4d' ),
-                    'cod_fee'     => self::cod_fee_for_rate( 'c4d' ),
-                    'meta'        => array(
-                        __( 'Delivery time', 'lawhaa-shipping-rules' ) => $estimate,
-                        __( 'Maximum weight', 'lawhaa-shipping-rules' ) => sprintf( __( '%s kg', 'lawhaa-shipping-rules' ), wc_format_decimal( $config['c4d_max_kg'], 2 ) ),
+                        __( 'Distance', 'lawhaa-shipping-rules' ) => sprintf( __( '%s km', 'lawhaa-shipping-rules' ), wc_format_decimal( $distance_km, 1 ) ),
                     ),
                 );
             }
@@ -649,7 +665,7 @@ final class Lawhaa_Shipping_Rules {
                 );
             }
 
-            self::log_debug( 'Generated Lawhaa rates', compact( 'city', 'district', 'group', 'weight_kg', 'amount', 'rates' ) );
+            self::log_debug( 'Generated Lawhaa rates', compact( 'city', 'district', 'group', 'weight_kg', 'amount', 'distance_km', 'rates' ) );
             return apply_filters( 'lawhaa_shipping_rates', $rates, $context, $config );
         }
 
@@ -671,20 +687,93 @@ final class Lawhaa_Shipping_Rules {
             );
         }
 
-        self::log_debug( 'Generated Lawhaa rates', compact( 'city', 'district', 'group', 'weight_kg', 'amount', 'rates' ) );
+        self::log_debug( 'Generated Lawhaa rates', compact( 'city', 'district', 'group', 'weight_kg', 'amount', 'distance_km', 'rates' ) );
         return apply_filters( 'lawhaa_shipping_rates', $rates, $context, $config );
     }
 
-    public static function mrsool_cost( $weight_kg, $config = null ) {
-        $config    = ( null === $config ? self::config() : self::sanitize_config( $config ) );
-        $billable  = max( 1, (int) ceil( self::sanitize_non_negative_float( $weight_kg, 0.0 ) ) );
-        return (float) $config['mrsool_first_kg'] + max( 0, $billable - 1 ) * (float) $config['mrsool_extra_per_kg'];
+    /**
+     * Distance price: the base cost covers the first base_km; every started km after that adds per_km.
+     */
+    public static function distance_cost( $distance_km, $code, $config = null ) {
+        $config   = ( null === $config ? self::config() : self::sanitize_config( $config ) );
+        $code     = 'c4d' === $code ? 'c4d' : 'mrsool';
+        $km       = self::sanitize_non_negative_float( $distance_km, 0.0 );
+        $extra_km = (int) ceil( round( max( 0.0, $km - (float) $config[ $code . '_base_km' ] ), 3 ) );
+
+        return (float) $config[ $code . '_base_cost' ] + $extra_km * (float) $config[ $code . '_per_km' ];
     }
 
-    public static function c4d_cost( $weight_kg, $config = null ) {
-        $config    = ( null === $config ? self::config() : self::sanitize_config( $config ) );
-        $billable  = max( 1, (int) ceil( self::sanitize_non_negative_float( $weight_kg, 0.0 ) ) );
-        return (float) $config['c4d_first_kg'] + max( 0, $billable - 1 ) * (float) $config['c4d_extra_per_kg'];
+    /**
+     * Road-distance estimate in km from the store to the destination, with its source:
+     * "address" (national address coordinates) or "city" (configured city point).
+     * km is null when the store point or the destination point is unknown, and is not rounded.
+     */
+    public static function destination_distance( $short_code, $city ) {
+        $config = self::config();
+        $none   = array( 'km' => null, 'source' => '' );
+        if ( $config['store_lat'] <= 0.0 || $config['store_lng'] <= 0.0 ) {
+            return $none;
+        }
+
+        $point  = null;
+        $source = '';
+        $code   = self::sanitize_short_code( $short_code );
+        if ( '' !== $code && class_exists( 'Lawhaa_National_Address' ) ) {
+            $point  = Lawhaa_National_Address::coordinates( $code );
+            $source = 'address';
+        }
+        if ( ! $point ) {
+            $point  = self::city_point( $city );
+            $source = 'city';
+        }
+        if ( ! $point ) {
+            return $none;
+        }
+
+        $km = self::haversine_km( $config['store_lat'], $config['store_lng'], $point[0], $point[1] ) * (float) $config['distance_road_factor'];
+
+        // Unrounded: the max-distance check and the price use the exact value; display rounds.
+        return array( 'km' => $km, 'source' => $source );
+    }
+
+    public static function haversine_km( $lat1, $lng1, $lat2, $lng2 ) {
+        $d_lat = deg2rad( (float) $lat2 - (float) $lat1 );
+        $d_lng = deg2rad( (float) $lng2 - (float) $lng1 );
+        $a     = sin( $d_lat / 2 ) ** 2 + cos( deg2rad( (float) $lat1 ) ) * cos( deg2rad( (float) $lat2 ) ) * sin( $d_lng / 2 ) ** 2;
+
+        return 6371.0 * 2 * atan2( sqrt( $a ), sqrt( 1 - $a ) );
+    }
+
+    /**
+     * Configured point for a city name, from lines like "Dammam, الدمام | 26.42, 50.08".
+     *
+     * @return array|null [ lat, lng ]
+     */
+    public static function city_point( $city ) {
+        $city_key = self::normalize_location( $city );
+        if ( '' === $city_key ) {
+            return null;
+        }
+
+        foreach ( self::alias_lines( self::config()['distance_city_points'] ) as $line ) {
+            $parts = explode( '|', $line );
+            if ( 2 !== count( $parts ) || ! preg_match( '/^\s*(-?[0-9.]+)\s*,\s*(-?[0-9.]+)\s*$/', $parts[1], $m ) ) {
+                continue;
+            }
+            foreach ( explode( ',', $parts[0] ) as $name ) {
+                if ( self::normalize_location( $name ) === $city_key ) {
+                    return array( (float) $m[1], (float) $m[2] );
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public static function sanitize_short_code( $code ) {
+        $code = is_scalar( $code ) ? strtoupper( preg_replace( '/\s+/', '', (string) $code ) ) : '';
+
+        return preg_match( '/^[A-Z]{4}[0-9]{4}$/', $code ) ? $code : '';
     }
 
     public static function carrier_cost( $weight_kg, $config = null ) {
@@ -725,7 +814,7 @@ final class Lawhaa_Shipping_Rules {
         $code = is_scalar( $code ) ? sanitize_key( (string) $code ) : '';
         $map = array(
             'center_delivery' => 'center',
-            'mrsool'          => 'fast',
+            'mrsool'          => 'mrsool',
             'c4d'             => 'fast',
             'local_pickup'    => 'pickup',
             'carrier'         => 'carrier',
@@ -736,7 +825,7 @@ final class Lawhaa_Shipping_Rules {
     }
 
     public static function rate_families() {
-        return array( 'center', 'fast', 'pickup', 'carrier', 'heavy' );
+        return array( 'center', 'mrsool', 'fast', 'pickup', 'carrier', 'heavy' );
     }
 
     /**
@@ -799,7 +888,7 @@ final class Lawhaa_Shipping_Rules {
 
         $safe_context = array();
         foreach ( (array) $context as $key => $value ) {
-            if ( in_array( $key, array( 'city', 'district', 'group', 'weight_kg', 'amount', 'rates', 'rate_code', 'cod_allowed', 'cod_fee' ), true ) ) {
+            if ( in_array( $key, array( 'city', 'district', 'group', 'weight_kg', 'amount', 'distance_km', 'rates', 'rate_code', 'cod_allowed', 'cod_fee' ), true ) ) {
                 $safe_context[ $key ] = $value;
             }
         }

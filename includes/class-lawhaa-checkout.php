@@ -16,6 +16,131 @@ final class Lawhaa_Checkout {
         add_filter( 'woocommerce_shipping_calculator_enable_postcode', '__return_false' );
         add_filter( 'woocommerce_default_address_fields', array( $this, 'make_postcode_optional' ) );
         add_filter( 'woocommerce_cart_shipping_method_full_label', array( $this, 'show_zero_cost' ), 10, 2 );
+        add_action( 'woocommerce_checkout_update_order_review', array( $this, 'remember_short_code' ) );
+        add_filter( 'woocommerce_cart_shipping_packages', array( $this, 'add_short_code_to_packages' ) );
+    }
+
+    /**
+     * Checkout fields holding the national address short code (billing, then "ship to a different address").
+     */
+    private static function short_code_fields() {
+        return apply_filters(
+            'lawhaa_shipping_short_code_fields',
+            array(
+                'billing'  => 'ksa_national_address_shortcode',
+                'shipping' => 'shipping_national_address_shortcode',
+            )
+        );
+    }
+
+    /**
+     * Pick the destination short code from posted checkout fields.
+     */
+    private static function short_code_from_fields( $fields ) {
+        $keys     = self::short_code_fields();
+        $billing  = isset( $keys['billing'], $fields[ $keys['billing'] ] ) ? Lawhaa_Shipping_Rules::sanitize_short_code( $fields[ $keys['billing'] ] ) : '';
+        $shipping = isset( $keys['shipping'], $fields[ $keys['shipping'] ] ) ? Lawhaa_Shipping_Rules::sanitize_short_code( $fields[ $keys['shipping'] ] ) : '';
+
+        // A separate shipping address never borrows the billing coordinates; without its own
+        // code the shipping city point is used.
+        return ! empty( $fields['ship_to_different_address'] ) ? $shipping : $billing;
+    }
+
+    /**
+     * Destination city of the posted checkout fields, matching short_code_from_fields().
+     */
+    private static function city_from_fields( $fields ) {
+        $key = ! empty( $fields['ship_to_different_address'] ) ? 'shipping_city' : 'billing_city';
+
+        return isset( $fields[ $key ] ) && is_scalar( $fields[ $key ] ) ? Lawhaa_Shipping_Rules::normalize_location( $fields[ $key ] ) : '';
+    }
+
+    /**
+     * The checkout form refresh posts the whole form as post_data; keep the short code in the session.
+     */
+    public function remember_short_code( $post_data ) {
+        if ( ! WC()->session || ! is_string( $post_data ) ) {
+            return;
+        }
+
+        parse_str( $post_data, $fields );
+        $fields = is_array( $fields ) ? wp_unslash( $fields ) : array();
+        // Keep the city with the code so a later destination change (cart calculator) drops it.
+        WC()->session->set(
+            'lawhaa_short_code',
+            array(
+                'code' => self::short_code_from_fields( $fields ),
+                'city' => self::city_from_fields( $fields ),
+            )
+        );
+    }
+
+    /**
+     * @param string|null $city Destination city of the package being rated; the cached session
+     *                          code is used only when it was saved for the same city.
+     */
+    public static function current_short_code( $city = null ) {
+        $keys = self::short_code_fields();
+        // WooCommerce verifies the checkout nonce before calculating totals for the order.
+        if ( isset( $keys['billing'], $_POST[ $keys['billing'] ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            return self::short_code_from_fields( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        }
+
+        // Checkout Blocks submit the validator's additional field through the Store API.
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return self::blocks_short_code();
+        }
+
+        $saved = WC()->session ? WC()->session->get( 'lawhaa_short_code' ) : null;
+        if ( is_array( $saved ) && isset( $saved['code'], $saved['city'] ) && '' !== $saved['code'] ) {
+            $matches = null === $city || Lawhaa_Shipping_Rules::normalize_location( $city ) === $saved['city'];
+
+            return $matches ? Lawhaa_Shipping_Rules::sanitize_short_code( $saved['code'] ) : '';
+        }
+
+        return self::blocks_short_code();
+    }
+
+    /**
+     * Short code from the Checkout Blocks additional address field (shipping first, then billing).
+     */
+    private static function blocks_short_code() {
+        $service_class = '\Automattic\WooCommerce\Blocks\Domain\Services\CheckoutFields';
+        if ( ! function_exists( 'WC' ) || ! WC()->customer || ! class_exists( '\Automattic\WooCommerce\Blocks\Package' ) || ! class_exists( $service_class ) ) {
+            return '';
+        }
+
+        $field_id = (string) apply_filters( 'lawhaa_shipping_blocks_short_code_field', 'otoksa/shortcode' );
+        try {
+            $fields = \Automattic\WooCommerce\Blocks\Package::container()->get( $service_class );
+            foreach ( array( 'shipping', 'billing' ) as $group ) {
+                $code = Lawhaa_Shipping_Rules::sanitize_short_code( $fields->get_field_from_object( $field_id, WC()->customer, $group ) );
+                if ( '' !== $code ) {
+                    return $code;
+                }
+            }
+        } catch ( \Throwable $e ) {
+            Lawhaa_Shipping_Rules::log_debug( 'Blocks short code lookup failed' );
+        }
+
+        return '';
+    }
+
+    /**
+     * Carry the short code in each package so it drives the distance and the rate cache hash.
+     */
+    public function add_short_code_to_packages( $packages ) {
+        foreach ( $packages as $index => $package ) {
+            $city = isset( $package['destination']['city'] ) ? (string) $package['destination']['city'] : '';
+            $code = self::current_short_code( $city );
+            $packages[ $index ]['lawhaa_short_code'] = $code;
+            // The lookup result is part of the package hash, so rates cached while a lookup
+            // failed (city fallback) are recalculated once the coordinates resolve.
+            $point = '' !== $code && class_exists( 'Lawhaa_National_Address' ) ? Lawhaa_National_Address::coordinates( $code ) : null;
+            $packages[ $index ]['lawhaa_short_code_point'] = $point ? implode( ',', $point ) : '';
+        }
+
+        return $packages;
     }
 
     /**
@@ -197,6 +322,14 @@ final class Lawhaa_Checkout {
         $order->update_meta_data( '_lawhaa_destination_district', $district );
         $order->update_meta_data( '_lawhaa_shipping_group', $group );
         $order->update_meta_data( '_lawhaa_package_weight_kg', Lawhaa_Shipping_Rules::package_weight_kg( array( 'contents' => WC()->cart ? WC()->cart->get_cart() : array() ) ) );
+
+        if ( Lawhaa_Shipping_Rules::is_local_group( $group ) ) {
+            $distance = Lawhaa_Shipping_Rules::destination_distance( self::current_short_code( $city ), $city );
+            if ( null !== $distance['km'] ) {
+                $order->update_meta_data( '_lawhaa_distance_km', round( $distance['km'], 1 ) );
+                $order->update_meta_data( '_lawhaa_distance_source', $distance['source'] );
+            }
+        }
     }
 
     /**
@@ -212,7 +345,13 @@ final class Lawhaa_Checkout {
             return $should_deliver;
         }
 
-        if ( Lawhaa_Shipping_Rules::blocks_oto_delivery( $webhook->get_delivery_url(), $order->get_meta( '_lawhaa_shipping_rate_family' ) ) ) {
+        // Derive the family from the rate code so orders saved before Mrsool got its own family follow the current mapping.
+        $family = Lawhaa_Shipping_Rules::rate_family( $order->get_meta( '_lawhaa_shipping_rate_code' ) );
+        if ( '' === $family ) {
+            $family = $order->get_meta( '_lawhaa_shipping_rate_family' );
+        }
+
+        if ( Lawhaa_Shipping_Rules::blocks_oto_delivery( $webhook->get_delivery_url(), $family ) ) {
             return false;
         }
 
