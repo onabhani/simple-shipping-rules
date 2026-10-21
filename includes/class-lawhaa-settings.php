@@ -39,15 +39,26 @@ final class Lawhaa_Settings {
         $config = Lawhaa_Shipping_Rules::sanitize_config( is_array( $input ) ? $input : array() );
 
         // Look up the store point when the store short code is new or changed.
-        $previous = get_option( self::OPTION_NAME, array() );
-        $previous = is_array( $previous ) && isset( $previous['store_short_code'] ) ? (string) $previous['store_short_code'] : '';
+        $saved    = get_option( self::OPTION_NAME, array() );
+        $saved    = is_array( $saved ) ? Lawhaa_Shipping_Rules::sanitize_config( $saved ) : Lawhaa_Shipping_Rules::default_config();
+        $previous = $saved['store_short_code'];
         if ( '' !== $config['store_short_code'] && ( $config['store_short_code'] !== $previous || $config['store_lat'] <= 0.0 || $config['store_lng'] <= 0.0 ) ) {
             $point = Lawhaa_National_Address::coordinates( $config['store_short_code'] );
             if ( $point ) {
                 $config['store_lat'] = $point[0];
                 $config['store_lng'] = $point[1];
             } else {
-                add_settings_error( self::OPTION_NAME, 'lawhaa_store_point', __( 'Could not find the store national address. Enter the store latitude and longitude manually.', 'lawhaa-shipping-rules' ) );
+                $manual = $config['store_lat'] > 0.0 && $config['store_lng'] > 0.0
+                    && ( $config['store_lat'] !== $saved['store_lat'] || $config['store_lng'] !== $saved['store_lng'] );
+                if ( ! $manual && $config['store_short_code'] !== $previous ) {
+                    // Keep the previous code with its point so the new code is looked up again on the next save.
+                    $config['store_short_code'] = $previous;
+                    $config['store_lat']        = $saved['store_lat'];
+                    $config['store_lng']        = $saved['store_lng'];
+                }
+                if ( ! $manual ) {
+                    add_settings_error( self::OPTION_NAME, 'lawhaa_store_point', __( 'Could not find the store national address. Enter the store latitude and longitude manually.', 'lawhaa-shipping-rules' ) );
+                }
             }
         }
 
