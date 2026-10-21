@@ -362,3 +362,51 @@ msgstr ""
 #, php-format
 msgid "%s SAR if COD is selected"
 msgstr ""
+
+msgid "Distance"
+msgstr ""
+
+msgid "%s km"
+msgstr ""
+
+msgid "Distance (MRSOOL / C4D)"
+msgstr ""
+
+msgid "Store national address short code"
+msgstr ""
+
+msgid "Store latitude"
+msgstr ""
+
+msgid "Store longitude"
+msgstr ""
+
+msgid "Road factor"
+msgstr ""
+
+msgid "City points"
+msgstr ""
+
+msgid "Used when the customer has no national address short code. One city per line: names separated by commas | latitude, longitude"
+msgstr ""
+
+msgid "Max distance (km)"
+msgstr ""
+
+msgid "Base distance (km)"
+msgstr ""
+
+msgid "Base distance price"
+msgstr ""
+
+msgid "Additional km price"
+msgstr ""
+
+msgid "MRSOOL"
+msgstr ""
+
+msgid "Fast delivery (C4D)"
+msgstr ""
+
+msgid "Could not find the store national address. Enter the store latitude and longitude manually."
+msgstr ""

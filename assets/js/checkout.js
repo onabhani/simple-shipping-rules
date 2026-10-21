@@ -33,6 +33,10 @@
       fieldValue('#shipping_state') || fieldValue('#billing_state'),
       fieldValue('#shipping_address_1') || fieldValue('#billing_address_1'),
       fieldValue('#shipping_address_2') || fieldValue('#billing_address_2'),
+      // National address short codes drive the Mrsool/C4D distance price.
+      fieldValue('#ksa_national_address_shortcode') || fieldValue('#billing-otoksa-shortcode'),
+      fieldValue('#shipping_national_address_shortcode'),
+      $('#ship-to-different-address-checkbox').is(':checked') ? '1' : '0',
       fieldValue('input[name="payment_method"]:checked')
     ].join('|');
   }
@@ -69,12 +73,21 @@
     lastSnapshot = currentSnapshot();
   });
 
+  // The national address validator fills city/district only after its own lookup
+  // (about 1s after typing), so refresh again once that lookup completes.
+  $(document).ajaxComplete(function(event, xhr, settings) {
+    var data = settings && typeof settings.data === 'string' ? settings.data : '';
+    if (data.indexOf('action=otoksa_validate_address') !== -1) {
+      scheduleCheckoutUpdate('national address validated', false);
+    }
+  });
+
   $(document.body)
     .off('.lawhaaShipping')
     .on('change.lawhaaShipping input.lawhaaShipping blur.lawhaaShipping', '#billing_country, #billing_city, #billing_state, #billing_address_1, #billing_address_2, #shipping_country, #shipping_city, #shipping_state, #shipping_address_1, #shipping_address_2', function() {
       scheduleCheckoutUpdate('address field changed', false);
     })
-    .on('change.lawhaaShipping input.lawhaaShipping blur.lawhaaShipping', '#ksa_national_address_shortcode, #billing-otoksa-shortcode', function() {
+    .on('change.lawhaaShipping input.lawhaaShipping blur.lawhaaShipping', '#ksa_national_address_shortcode, #billing-otoksa-shortcode, #shipping_national_address_shortcode', function() {
       scheduleCheckoutUpdate('national address shortcode changed', false);
     })
     .on('payment_method_selected.lawhaaShipping change.lawhaaShipping', 'input[name="payment_method"]', function() {

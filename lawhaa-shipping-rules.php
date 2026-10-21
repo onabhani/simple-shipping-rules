@@ -3,7 +3,7 @@
  * Plugin Name:       Simple Shipping Rule
  * Plugin URI:        https://hdqah.com/
  * Description:       Smart WooCommerce shipping rules for KSA: local delivery, Mrsool, C4D, carriers, heavy sink shipping, COD restrictions, and KSA National Address compatibility.
- * Version:           0.2.1
+ * Version:           0.3.0
  * Author:            hdqah.com
  * Author URI:        https://hdqah.com/
  * Text Domain:       lawhaa-shipping-rules
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'LAWHAASHIP_VERSION', '0.2.1' );
+define( 'LAWHAASHIP_VERSION', '0.3.0' );
 define( 'LAWHAASHIP_FILE', __FILE__ );
 define( 'LAWHAASHIP_PATH', plugin_dir_path( __FILE__ ) );
 define( 'LAWHAASHIP_URL', plugin_dir_url( __FILE__ ) );
@@ -63,6 +63,7 @@ add_action( 'plugins_loaded', static function() {
     }
 
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-shipping-rules.php';
+    require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-national-address.php';
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-settings.php';
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-shipping-method.php';
     require_once LAWHAASHIP_PATH . 'includes/class-lawhaa-checkout.php';
