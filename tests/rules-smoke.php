@@ -298,6 +298,37 @@ lawhaa_test_assert_same( 'OTO: empty URL match disables blocking', false, Lawhaa
 unset( $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] );
 Lawhaa_Shipping_Rules::reset_cache();
 
+// Free-shipping threshold amount: product lines after discount, including VAT.
+// Order 41742 (2026-11-08): 338 ex VAT after coupon, 389 incl VAT -> carrier must be free.
+$package_41742 = array(
+    'contents_cost' => 338.0,
+    'contents'      => array(
+        array( 'line_total' => 338.0, 'line_tax' => 50.7 ),
+    ),
+);
+lawhaa_test_assert_same( 'Threshold: amount includes VAT after discount', 388.7, Lawhaa_Shipping_Rules::package_amount( $package_41742 ) );
+lawhaa_test_assert_same( 'Threshold: 41742 carrier is free', 0.0, lawhaa_rate_costs( lawhaa_rates_for( 'Jeddah', 34.3, Lawhaa_Shipping_Rules::package_amount( $package_41742 ) ) )['carrier_free'] ?? null );
+// Order 41763 (2026-11-14): 360 before the coupon but 324 incl VAT after it -> carrier stays paid.
+// Values as stored on the real order: line_tax is rounded, line_tax_data keeps the unrounded VAT.
+$package_41763 = array(
+    'contents' => array(
+        array( 'line_total' => 281.695652, 'line_tax' => 42.0, 'line_tax_data' => array( 'total' => array( 1 => 42.254348 ) ) ),
+    ),
+);
+lawhaa_test_assert_same( 'Threshold: 41763 amount after discount', 323.95, Lawhaa_Shipping_Rules::package_amount( $package_41763 ) );
+// Four VAT-inclusive lines of 100, 100, 100 and 50 SAR: WooCommerce shows 350.00, so carrier must be free.
+// line_total is price minus the unrounded tax, line_tax is rounded per line.
+$package_350 = array( 'contents' => array() );
+foreach ( array( 100.0, 100.0, 100.0, 50.0 ) as $price ) {
+    $tax                       = $price - $price / 1.15;
+    $package_350['contents'][] = array( 'line_total' => $price - $tax, 'line_tax' => round( $tax, 2 ), 'line_tax_data' => array( 'total' => array( 1 => $tax ) ) );
+}
+lawhaa_test_assert_same( 'Threshold: per-line VAT rounding keeps 350.00', 350.0, Lawhaa_Shipping_Rules::package_amount( $package_350 ) );
+lawhaa_test_assert_same( 'Threshold: 350.00 carrier is free', array( 'carrier_free' ), array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Makkah', 5.0, Lawhaa_Shipping_Rules::package_amount( $package_350 ) ) ) ) );
+lawhaa_test_assert_same( 'Threshold: 41763 carrier stays paid', array( 'carrier' ), array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Makkah', 20.0, Lawhaa_Shipping_Rules::package_amount( $package_41763 ) ) ) ) );
+lawhaa_test_assert_same( 'Threshold: several lines are summed', 302.0, Lawhaa_Shipping_Rules::package_amount( array( 'contents' => array( array( 'line_total' => 100.0, 'line_tax' => 15.0 ), array( 'line_total' => 162.61, 'line_tax' => 24.39 ) ) ) ) );
+lawhaa_test_assert_same( 'Threshold: bad line values count as zero', 115.0, Lawhaa_Shipping_Rules::package_amount( array( 'contents' => array( array( 'line_total' => 100.0, 'line_tax' => 15.0 ), array( 'line_total' => 'x' ), 'junk' ) ) ) );
+
 $conflict_files = array(
     'docs/IMPLEMENTATION-NOTES.md',
     'includes/class-lawhaa-checkout.php',
