@@ -298,6 +298,27 @@ lawhaa_test_assert_same( 'OTO: empty URL match disables blocking', false, Lawhaa
 unset( $GLOBALS['lawhaa_test_options']['lawhaa_shipping_rules_settings'] );
 Lawhaa_Shipping_Rules::reset_cache();
 
+// Free-shipping threshold amount: product lines after discount, including VAT.
+// Order 41742 (2026-11-08): 338 ex VAT after coupon, 389 incl VAT -> carrier must be free.
+$package_41742 = array(
+    'contents_cost' => 338.0,
+    'contents'      => array(
+        array( 'line_total' => 338.0, 'line_tax' => 50.7 ),
+    ),
+);
+lawhaa_test_assert_same( 'Threshold: amount includes VAT after discount', 388.7, Lawhaa_Shipping_Rules::package_amount( $package_41742 ) );
+lawhaa_test_assert_same( 'Threshold: 41742 carrier is free', 0.0, lawhaa_rate_costs( lawhaa_rates_for( 'Jeddah', 34.3, Lawhaa_Shipping_Rules::package_amount( $package_41742 ) ) )['carrier_free'] ?? null );
+// Order 41763 (2026-11-14): 360 before the coupon but 324 incl VAT after it -> carrier stays paid.
+$package_41763 = array(
+    'contents' => array(
+        array( 'line_total' => 281.695652, 'line_tax' => 42.25 ),
+    ),
+);
+lawhaa_test_assert_same( 'Threshold: 41763 amount after discount', 323.95, Lawhaa_Shipping_Rules::package_amount( $package_41763 ) );
+lawhaa_test_assert_same( 'Threshold: 41763 carrier stays paid', array( 'carrier' ), array_keys( lawhaa_rate_costs( lawhaa_rates_for( 'Makkah', 20.0, Lawhaa_Shipping_Rules::package_amount( $package_41763 ) ) ) ) );
+lawhaa_test_assert_same( 'Threshold: several lines are summed', 302.0, Lawhaa_Shipping_Rules::package_amount( array( 'contents' => array( array( 'line_total' => 100.0, 'line_tax' => 15.0 ), array( 'line_total' => 162.61, 'line_tax' => 24.39 ) ) ) ) );
+lawhaa_test_assert_same( 'Threshold: bad line values count as zero', 115.0, Lawhaa_Shipping_Rules::package_amount( array( 'contents' => array( array( 'line_total' => 100.0, 'line_tax' => 15.0 ), array( 'line_total' => 'x' ), 'junk' ) ) ) );
+
 $conflict_files = array(
     'docs/IMPLEMENTATION-NOTES.md',
     'includes/class-lawhaa-checkout.php',

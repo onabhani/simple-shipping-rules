@@ -335,7 +335,7 @@ final class Lawhaa_Shipping_Rules {
         }
 
         $weight_kg = self::package_weight_kg( $package );
-        $amount    = isset( $package['contents_cost'] ) ? self::sanitize_non_negative_float( $package['contents_cost'], 0.0 ) : self::cart_amount();
+        $amount    = self::package_amount( $package );
         $group     = self::city_group( $city, $district );
         $distance  = array( 'km' => null, 'source' => '' );
         if ( self::is_local_group( $group ) ) {
@@ -373,9 +373,29 @@ final class Lawhaa_Shipping_Rules {
         return wc_clean( wp_unslash( (string) $value ) );
     }
 
+    /**
+     * Amount compared with the free-shipping thresholds: the product lines
+     * after discounts, including VAT (what the shopper sees at checkout).
+     */
+    public static function package_amount( $package ) {
+        if ( isset( $package['contents'] ) && is_array( $package['contents'] ) && $package['contents'] ) {
+            $amount = 0.0;
+            foreach ( $package['contents'] as $item ) {
+                if ( ! is_array( $item ) ) {
+                    continue;
+                }
+                $amount += self::sanitize_non_negative_float( isset( $item['line_total'] ) ? $item['line_total'] : 0, 0.0 );
+                $amount += self::sanitize_non_negative_float( isset( $item['line_tax'] ) ? $item['line_tax'] : 0, 0.0 );
+            }
+            return round( $amount, 2 );
+        }
+
+        return self::cart_amount();
+    }
+
     public static function cart_amount() {
-        if ( WC()->cart ) {
-            return max( 0, (float) WC()->cart->get_subtotal() - (float) WC()->cart->get_discount_total() );
+        if ( function_exists( 'WC' ) && WC()->cart ) {
+            return round( max( 0, (float) WC()->cart->get_cart_contents_total() + (float) WC()->cart->get_cart_contents_tax() ), 2 );
         }
         return 0.0;
     }
