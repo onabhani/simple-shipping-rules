@@ -376,18 +376,32 @@ final class Lawhaa_Shipping_Rules {
     /**
      * Amount compared with the free-shipping thresholds: the product lines
      * after discounts, including VAT (what the shopper sees at checkout).
+     *
+     * With VAT-inclusive prices WooCommerce stores line_total as the price
+     * minus the UNROUNDED taxes (line_tax_data) and line_tax as the rounded
+     * sum, so line_total + line_tax can miss the shown price by a few
+     * halalas. Each line therefore uses the unrounded taxes when present and
+     * is rounded to the store price decimals before summing.
      */
     public static function package_amount( $package ) {
         if ( isset( $package['contents'] ) && is_array( $package['contents'] ) && $package['contents'] ) {
-            $amount = 0.0;
+            $decimals = function_exists( 'wc_get_price_decimals' ) ? (int) wc_get_price_decimals() : 2;
+            $amount   = 0.0;
             foreach ( $package['contents'] as $item ) {
                 if ( ! is_array( $item ) ) {
                     continue;
                 }
-                $amount += self::sanitize_non_negative_float( isset( $item['line_total'] ) ? $item['line_total'] : 0, 0.0 );
-                $amount += self::sanitize_non_negative_float( isset( $item['line_tax'] ) ? $item['line_tax'] : 0, 0.0 );
+                $line = self::sanitize_non_negative_float( isset( $item['line_total'] ) ? $item['line_total'] : 0, 0.0 );
+                if ( isset( $item['line_tax_data']['total'] ) && is_array( $item['line_tax_data']['total'] ) && $item['line_tax_data']['total'] ) {
+                    foreach ( $item['line_tax_data']['total'] as $tax ) {
+                        $line += self::sanitize_non_negative_float( $tax, 0.0 );
+                    }
+                } else {
+                    $line += self::sanitize_non_negative_float( isset( $item['line_tax'] ) ? $item['line_tax'] : 0, 0.0 );
+                }
+                $amount += round( $line, $decimals );
             }
-            return round( $amount, 2 );
+            return round( $amount, $decimals );
         }
 
         return self::cart_amount();
